@@ -73,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, toRaw } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePhotosStore } from '../../../stores/photos'
 import { useProjectsStore } from '../../../stores/projects'
@@ -142,9 +142,24 @@ const uploadFiles = async (files: File[]) => {
   isUploading.value = false
 }
 
+// Cache de URLs para evitar memory leaks
+const photoUrlCache = new Map<string, string>()
+
 const getPhotoUrl = (photo: Photo) => {
-  return URL.createObjectURL(photo.data)
+  if (photoUrlCache.has(photo.id)) {
+    return photoUrlCache.get(photo.id)!
+  }
+  const rawData = toRaw(photo.data)
+  if (!rawData) return ''
+  const url = URL.createObjectURL(rawData)
+  photoUrlCache.set(photo.id, url)
+  return url
 }
+
+onUnmounted(() => {
+  photoUrlCache.forEach(url => URL.revokeObjectURL(url))
+  photoUrlCache.clear()
+})
 
 const viewPhoto = (photo: Photo) => {
   router.push(`/project/${projectId.value}/viewer/${photo.id}`)

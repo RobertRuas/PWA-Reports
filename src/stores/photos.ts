@@ -222,6 +222,43 @@ export const usePhotosStore = defineStore('photos', () => {
     }
   }
 
+  // Reordenar foto dentro de uma pasta (mover sourceId para posição de targetId)
+  async function reorderPhoto(sourceId: string, targetId: string, folder: string, projectName: string) {
+    const projectId = currentProjectId.value
+    if (!projectId) return
+
+    // Separar fotos da pasta e manter restantes
+    const folderPhotos: Photo[] = []
+    for (const p of photos.value) {
+      if (p.projectId === projectId && p.folder === folder) {
+        folderPhotos.push(p)
+      }
+    }
+
+    const sourceIdx = folderPhotos.findIndex(p => p.id === sourceId)
+    const targetIdx = folderPhotos.findIndex(p => p.id === targetId)
+    if (sourceIdx < 0 || targetIdx < 0 || sourceIdx === targetIdx) return
+
+    // Mover source para posição do target
+    const [moved] = folderPhotos.splice(sourceIdx, 1)
+    folderPhotos.splice(targetIdx, 0, moved)
+
+    // Reconstruir array preservando intercalação com outras pastas
+    const result: Photo[] = []
+    let fIdx = 0
+    for (const p of photos.value) {
+      if (p.projectId === projectId && p.folder === folder) {
+        result.push(folderPhotos[fIdx++])
+      } else {
+        result.push(p)
+      }
+    }
+    photos.value = result
+
+    // Renumerar e persistir
+    await renumberFolderPhotos(projectId, folder, projectName)
+  }
+
   return {
     // State
     photos,
@@ -242,5 +279,6 @@ export const usePhotosStore = defineStore('photos', () => {
     uncategorizePhotos,
     getPhotoBlob,
     renumberFolderPhotos,
+    reorderPhoto,
   }
 })

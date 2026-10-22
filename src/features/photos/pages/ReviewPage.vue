@@ -105,7 +105,9 @@
           <div
             v-for="photo in getVisiblePhotos(folder)"
             :key="photo.id"
-            :class="['photo-thumb', { selected: selectedPhotos.has(photo.id), dragging: dragPhotoId === photo.id }]"
+            :data-photo-id="photo.id"
+            :data-folder="folder"
+            :class="['photo-thumb', { selected: selectedPhotos.has(photo.id), dragging: dragPhotoId === photo.id, 'drag-over': dragOverPhotoId === photo.id }]"
             :draggable="!selectionMode"
             @click="handlePhotoClick(photo)"
             @dragstart="onDragStart($event, photo, folder)"
@@ -113,8 +115,6 @@
             @drop.prevent="onDrop($event, photo, folder)"
             @dragend="onDragEnd"
             @touchstart="onReorderTouchStart($event, photo, folder)"
-            @touchmove="onReorderTouchMove($event)"
-            @touchend="onReorderTouchEnd($event, folder)"
           >
             <img :src="getPhotoUrl(photo)" :alt="photo.filename" loading="lazy" />
             <div v-if="selectionMode" class="select-overlay">
@@ -135,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted, toRaw } from 'vue'
 import { useRoute } from 'vue-router'
 import { usePhotosStore } from '../../../stores/photos'
 import { useProjectsStore } from '../../../stores/projects'
@@ -255,11 +255,7 @@ onMounted(async () => {
   calcInboxPreviewCount()
 })
 
-onUnmounted(() => {
-  // Limpar cache de URLs
-  photoUrlCache.forEach(url => URL.revokeObjectURL(url))
-  photoUrlCache.clear()
-})
+// onUnmounted está na seção de drag-to-reorder (abaixo)
 
 const getFolderCount = (folder: string) => {
   return photosByFolder.value[folder]?.length || 0
@@ -273,7 +269,10 @@ const getPhotoUrl = (photo: Photo) => {
   if (photoUrlCache.has(photo.id)) {
     return photoUrlCache.get(photo.id)!
   }
-  const url = URL.createObjectURL(photo.data)
+  // Usar toRaw para obter o Blob real (sem Proxy do Vue)
+  const rawData = toRaw(photo.data)
+  if (!rawData) return ''
+  const url = URL.createObjectURL(rawData)
   photoUrlCache.set(photo.id, url)
   return url
 }
@@ -330,10 +329,14 @@ const closeViewer = () => {
 const updatePhotoUrl = () => {
   if (currentPhotoUrl.value) {
     URL.revokeObjectURL(currentPhotoUrl.value)
+    currentPhotoUrl.value = ''
   }
   const photo = currentPhoto.value
   if (photo) {
-    currentPhotoUrl.value = URL.createObjectURL(photo.data)
+    const rawData = toRaw(photo.data)
+    if (rawData) {
+      currentPhotoUrl.value = URL.createObjectURL(rawData)
+    }
   }
 }
 
@@ -358,23 +361,27 @@ const moveCurrentPhoto = async (folder: string) => {
   const photo = currentPhoto.value
   if (!photo || photo.folder === folder) return
 
-  lastMove.value = { photoId: photo.id, fromFolder: photo.folder }
+  const photoId = photo.id
+  const fromFolder = photo.folder
+  lastMove.value = { photoId, fromFolder }
 
   // Animação de saída
   moveAnimating.value = true
 
-  await photoStore.movePhoto(photo.id, folder, projectName.value)
+  // Guardar o blob raw ANTES do move (seguro, sem Proxy)
+  const rawBlob = toRaw(photo.data)
+
+  await photoStore.movePhoto(photoId, folder, projectName.value)
   resetImageTransform()
 
-  // Invalidar cache da foto movida e recriar URL com os dados atuais
-  if (photoUrlCache.has(photo.id)) {
-    URL.revokeObjectURL(photoUrlCache.get(photo.id)!)
-    photoUrlCache.delete(photo.id)
+  // Invalidar e recriar URL no cache do grid usando o blob raw
+  if (photoUrlCache.has(photoId)) {
+    URL.revokeObjectURL(photoUrlCache.get(photoId)!)
+    photoUrlCache.delete(photoId)
   }
-  // Recriar URL com o blob atual (garante que a imagem continua a funcionar)
-  if (photo.data) {
-    const newUrl = URL.createObjectURL(photo.data)
-    photoUrlCache.set(photo.id, newUrl)
+  if (rawBlob) {
+    const newUrl = URL.createObjectURL(rawBlob)
+    photoUrlCache.set(photoId, newUrl)
   }
 
   if (reviewPhotos.value.length === 0) {
@@ -382,7 +389,7 @@ const moveCurrentPhoto = async (folder: string) => {
     return
   }
 
-  // Auto-avanço para próxima foto
+  // Ajustar índice se necessário
   if (currentIndex.value >= reviewPhotos.value.length) {
     currentIndex.value = reviewPhotos.value.length - 1
   }
@@ -479,6 +486,8 @@ const calcInboxPreviewCount = () => {
 }
 
 // ========= Drag-to-reorder dentro de pastas =========
+
+// --- HTML5 Drag (desktop) ---
 const onDragStart = (e: DragEvent, photo: Photo, _folder: string) => {
   dragPhotoId.value = photo.id
   if (e.dataTransfer) {
@@ -497,7 +506,7 @@ const onDrop = async (_e: DragEvent, targetPhoto: Photo, folder: string) => {
     dragOverPhotoId.value = null
     return
   }
-  await reorderPhotos(dragPhotoId.value, targetPhoto.id, folder)
+  await photoStore.reorderPhoto(dragPhotoId.value, targetPhoto.id, folder, projectName.value)
   dragPhotoId.value = null
   dragOverPhotoId.value = null
 }
@@ -507,48 +516,99 @@ const onDragEnd = () => {
   dragOverPhotoId.value = null
 }
 
-// Touch-based reorder (long-press to start)
-const onReorderTouchStart = (_e: TouchEvent, photo: Photo, _folder: string) => {
+// --- Touch-based reorder (long-press + arrastar) ---
+let longPressTimer: ReturnType<typeof setTimeout> | null = null
+const touchReorderStartX = ref(0)
+const touchReorderStartY = ref(0)
+const touchReorderFolder = ref('')
+
+const onReorderTouchStart = (e: TouchEvent, photo: Photo, folder: string) => {
+  if (selectionMode.value) return
+
+  const touch = e.touches[0]
+  touchReorderStartX.value = touch.clientX
+  touchReorderStartY.value = touch.clientY
   reorderTouchPhoto.value = photo
-  reorderTouchStartTime.value = Date.now()
+  touchReorderFolder.value = folder
   reorderTouchActive.value = false
-}
+  dragOverPhotoId.value = null
 
-const onReorderTouchMove = (_e: TouchEvent) => {
-  // Se pressionou por mais de 500ms, ativar modo reorder
-  if (Date.now() - reorderTouchStartTime.value > 500 && reorderTouchPhoto.value) {
+  // Iniciar timer de long-press (400ms)
+  if (longPressTimer) clearTimeout(longPressTimer)
+  longPressTimer = setTimeout(() => {
     reorderTouchActive.value = true
-    dragPhotoId.value = reorderTouchPhoto.value.id
+    dragPhotoId.value = photo.id
+    // Feedback háptico se disponível
+    if (navigator.vibrate) navigator.vibrate(30)
+  }, 400)
+}
+
+const onReorderTouchMove = (e: TouchEvent) => {
+  const touch = e.touches[0]
+
+  // Se não ativou long-press ainda, verificar se moveu demais (cancela)
+  if (!reorderTouchActive.value) {
+    const dx = touch.clientX - touchReorderStartX.value
+    const dy = touch.clientY - touchReorderStartY.value
+    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer)
+        longPressTimer = null
+      }
+    }
+    return
+  }
+
+  // Modo reorder ativo: prevenir scroll e encontrar alvo
+  e.preventDefault()
+
+  const el = document.elementFromPoint(touch.clientX, touch.clientY)
+  if (el) {
+    const thumbEl = el.closest('.photo-thumb') as HTMLElement | null
+    if (thumbEl) {
+      const targetId = thumbEl.dataset.photoId
+      if (targetId && targetId !== dragPhotoId.value) {
+        dragOverPhotoId.value = targetId
+      }
+    }
   }
 }
 
-const onReorderTouchEnd = async (_e: TouchEvent, folder: string) => {
-  if (reorderTouchActive.value && dragPhotoId.value && dragOverPhotoId.value) {
-    await reorderPhotos(dragPhotoId.value, dragOverPhotoId.value, folder)
+const onReorderTouchEnd = async () => {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer)
+    longPressTimer = null
   }
-  reorderTouchPhoto.value = null
+
+  if (reorderTouchActive.value && dragPhotoId.value && dragOverPhotoId.value) {
+    await photoStore.reorderPhoto(
+      dragPhotoId.value,
+      dragOverPhotoId.value,
+      touchReorderFolder.value,
+      projectName.value,
+    )
+  }
+
   reorderTouchActive.value = false
+  reorderTouchPhoto.value = null
   dragPhotoId.value = null
   dragOverPhotoId.value = null
 }
 
-// Reordenar fotos dentro de uma pasta
-const reorderPhotos = async (sourceId: string, targetId: string, folder: string) => {
-  const folderPhotos = getPhotosInFolder(folder)
-  const sourceIdx = folderPhotos.findIndex(p => p.id === sourceId)
-  const targetIdx = folderPhotos.findIndex(p => p.id === targetId)
-
-  if (sourceIdx < 0 || targetIdx < 0) return
-
-  // Reorganizar no array local
-  const [movedPhoto] = folderPhotos.splice(sourceIdx, 1)
-  folderPhotos.splice(targetIdx, 0, movedPhoto)
-
-  // Atualizar nomes e persistir
-  if (projectName.value) {
-    await photoStore.renumberFolderPhotos(projectId.value, folder, projectName.value)
-  }
-}
+// Registrar listeners de touch no document para capturar movimentos fora do elemento
+onMounted(() => {
+  document.addEventListener('touchmove', onReorderTouchMove, { passive: false })
+  document.addEventListener('touchend', onReorderTouchEnd, { passive: true })
+})
+onUnmounted(() => {
+  // Limpar listeners de touch
+  document.removeEventListener('touchmove', onReorderTouchMove)
+  document.removeEventListener('touchend', onReorderTouchEnd)
+  // Limpar cache de URLs
+  photoUrlCache.forEach(url => URL.revokeObjectURL(url))
+  photoUrlCache.clear()
+  if (longPressTimer) clearTimeout(longPressTimer)
+})
 </script>
 
 <style scoped>
@@ -753,6 +813,11 @@ const reorderPhotos = async (sourceId: string, targetId: string, folder: string)
 .photo-thumb.dragging {
   opacity: 0.4;
   outline: 2px dashed var(--p-primary-color);
+}
+
+.photo-thumb.drag-over {
+  outline: 2px solid var(--p-primary-color);
+  outline-offset: -2px;
 }
 
 .select-overlay {
