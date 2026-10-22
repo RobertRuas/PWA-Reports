@@ -1,0 +1,68 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  font-size: 14px;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--p-surface-ground);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* iOS Safari: inputs >=16px to prevent auto-zoom on focus */
+input,
+select,
+textarea,
+.p-inputtext,
+.p-select-label,
+.p-textarea,
+.p-password-input {
+  font-size: max(16px, 1rem) !important;
+}
+
+/* Reduce PrimeVue component density */
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1.1rem; }
+h4 { font-size: 1rem; }
+
+/* PrimeVue Password wrapper fix for p-fluid */
+.p-fluid .p-password {
+  width: 100%;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--p-surface-300);
+  border-radius: 9999px;
+}

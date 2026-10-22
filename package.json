@@ -1,0 +1,50 @@
+{
+  "name": "pwa-reports",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit",
+    "lint": "eslint 'src/**/*.{ts,vue}'",
+    "format": "prettier --write 'src/**/*.{ts,vue,css}'",
+    "format:check": "prettier --check 'src/**/*.{ts,vue,css}'",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "echo 'E2E tests not yet configured'",
+    "check": "npm run type-check && npm run lint && npm run test && npm run build"
+  },
+  "dependencies": {
+    "@primeuix/themes": "^2.0.3",
+    "dexie": "^4.4.6",
+    "pinia": "^4.1.0",
+    "primeicons": "^8.0.2",
+    "primevue": "^4.5.5",
+    "vue": "^3.5.44",
+    "vue-router": "^4.6.4",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@typescript-eslint/eslint-plugin": "^8.72.0",
+    "@typescript-eslint/parser": "^8.72.0",
+    "@vite-pwa/assets-generator": "^2.0.0",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/test-utils": "^2.5.1",
+    "@vue/tsconfig": "^0.9.1",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.11.1",
+    "fake-indexeddb": "^6.2.6",
+    "happy-dom": "^21.0.3",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.4",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.0.5",
+    "vue-tsc": "^3.3.13",
+    "workbox-window": "^7.4.1"
+  }
+}
