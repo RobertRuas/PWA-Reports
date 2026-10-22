@@ -31,7 +31,7 @@ onMounted(async () => {
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              onNeedRefresh(reg)
+              onNeedRefresh()
             }
           })
         }
