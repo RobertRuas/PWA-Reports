@@ -32,18 +32,6 @@
           <i :class="item.icon" class="nav-icon" />
           <span>{{ item.label }}</span>
         </div>
-        <Divider />
-        <div class="nav-section-label">Exemplos</div>
-        <div
-          v-for="item in exampleItems"
-          :key="item.route"
-          class="nav-item"
-          :class="{ active: isActive(item.route) }"
-          @click="navigateTo(item.route)"
-        >
-          <i :class="item.icon" class="nav-icon" />
-          <span>{{ item.label }}</span>
-        </div>
       </nav>
     </Drawer>
 
@@ -56,18 +44,6 @@
       <nav class="nav-list">
         <div
           v-for="item in navItems"
-          :key="item.route"
-          class="nav-item"
-          :class="{ active: isActive(item.route) }"
-          @click="navigateTo(item.route)"
-        >
-          <i :class="item.icon" class="nav-icon" />
-          <span>{{ item.label }}</span>
-        </div>
-        <Divider />
-        <div class="nav-section-label">Exemplos</div>
-        <div
-          v-for="item in exampleItems"
           :key="item.route"
           class="nav-item"
           :class="{ active: isActive(item.route) }"
@@ -105,7 +81,6 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Button from 'primevue/button'
 import Drawer from 'primevue/drawer'
-import Divider from 'primevue/divider'
 import ConnectionStatus from '../../components/feedback/ConnectionStatus.vue'
 import { appConfig } from '../config/app.config'
 
@@ -114,24 +89,13 @@ const route = useRoute()
 const drawerVisible = ref(false)
 
 const navItems = [
-  { label: 'Inicio', icon: 'pi pi-home', route: '/home' },
-  { label: 'Registros', icon: 'pi pi-database', route: '/records' },
-  { label: 'Vitrine', icon: 'pi pi-palette', route: '/showcase' },
-  { label: 'Ajustes', icon: 'pi pi-cog', route: '/settings' },
-]
-
-const exampleItems = [
-  { label: 'Dashboard', icon: 'pi pi-chart-bar', route: '/examples/dashboard' },
-  { label: 'Contactos', icon: 'pi pi-users', route: '/examples/contacts' },
-  { label: 'Login', icon: 'pi pi-sign-in', route: '/examples/login' },
-  { label: 'Cadastro', icon: 'pi pi-user-plus', route: '/examples/signup' },
+  { label: 'Projetos', icon: 'pi pi-home', route: '/home' },
+  { label: 'Configurações', icon: 'pi pi-cog', route: '/settings' },
 ]
 
 const bottomTabs = [
-  { label: 'Inicio', icon: 'pi pi-home', route: '/home' },
-  { label: 'Registros', icon: 'pi pi-database', route: '/records' },
-  { label: 'Vitrine', icon: 'pi pi-palette', route: '/showcase' },
-  { label: 'Ajustes', icon: 'pi pi-cog', route: '/settings' },
+  { label: 'Projetos', icon: 'pi pi-home', route: '/home' },
+  { label: 'Configurações', icon: 'pi pi-cog', route: '/settings' },
 ]
 
 function isActive(path: string): boolean {
