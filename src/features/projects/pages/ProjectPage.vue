@@ -129,7 +129,7 @@ const goBack = () => {
 
 .project-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 1rem;
   margin-bottom: 2rem;
 }
@@ -140,10 +140,16 @@ const goBack = () => {
   border-radius: var(--p-border-radius);
   padding: 1.5rem;
   text-align: center;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  border-color: var(--p-primary-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .stat-card i {
-  font-size: 2rem;
+  font-size: 1.75rem;
   color: var(--p-primary-color);
   display: block;
   margin-bottom: 0.5rem;
@@ -151,32 +157,32 @@ const goBack = () => {
 
 .stat-number {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: var(--p-text-color);
 }
 
 .stat-label {
   margin: 0.5rem 0 0;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--p-text-color-secondary);
 }
 
 .actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 1rem;
 }
 
 .action-card {
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--p-surface-50);
 }
 
 .action-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
 }
 
 :deep(.action-card .p-card-content) {
@@ -191,16 +197,22 @@ const goBack = () => {
   font-size: 2.5rem;
   color: var(--p-primary-color);
   margin-bottom: 1rem;
+  transition: transform 0.3s ease;
+}
+
+.action-card:hover i {
+  transform: scale(1.1);
 }
 
 .action-card h3 {
   margin: 0 0 0.5rem;
   color: var(--p-text-color);
+  font-size: 1rem;
 }
 
 .action-card p {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--p-text-color-secondary);
 }
 
@@ -213,5 +225,23 @@ const goBack = () => {
 
 .nav-buttons button {
   flex: 1;
+}
+
+@media (max-width: 600px) {
+  .content {
+    padding: 0.75rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stat-number {
+    font-size: 1.1rem;
+  }
+
+  :deep(.action-card .p-card-content) {
+    padding: 1.5rem 0.75rem;
+  }
 }
 </style>
