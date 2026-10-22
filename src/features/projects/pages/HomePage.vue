@@ -1,14 +1,14 @@
 <template>
   <div class="home-page">
-    <PageHeader title="Projetos" subtitle="PWA Reports" />
+    <PageHeader :title="t('home.title')" subtitle="PWA Reports" />
 
     <div class="content">
       <div v-if="sortedProjects.length === 0" class="empty-state">
         <i class="pi pi-inbox"></i>
-        <h2>Nenhum projeto criado</h2>
-        <p>Crie seu primeiro projeto para começar a organizar fotos</p>
+        <h2>{{ t('home.empty_title') }}</h2>
+        <p>{{ t('home.empty_message') }}</p>
         <Button
-          label="Novo Projeto"
+          :label="t('home.new_project')"
           icon="pi pi-plus"
           @click="showCreateDialog = true"
         />
@@ -37,7 +37,7 @@
 
         <div class="add-project-card" @click="showCreateDialog = true">
           <i class="pi pi-plus"></i>
-          <p>Novo Projeto</p>
+          <p>{{ t('home.new_project') }}</p>
         </div>
       </div>
     </div>
@@ -45,20 +45,20 @@
 
   <Dialog
     v-model:visible="showCreateDialog"
-    header="Criar Projeto"
+    :header="t('home.create_project')"
     :modal="true"
   >
     <div class="create-form">
       <div class="form-group">
-        <label>Nome do Projeto</label>
+        <label>{{ t('home.project_name') }}</label>
         <InputText
           v-model="newProjectName"
-          placeholder="Ex: Inspeção Prédio A"
+          :placeholder="`Ex: ${t('home.project_name')}`"
         />
       </div>
 
       <div class="form-group">
-        <label>Mapa</label>
+        <label>{{ t('home.map_selection') }}</label>
         <Dropdown
           v-model="newProjectMapId"
           :options="mapOptions"
@@ -67,9 +67,14 @@
         />
       </div>
 
-      <div style="margin-top: 1.5rem;">
+      <div style="margin-top: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
         <Button
-          label="Criar Projeto"
+          :label="t('home.cancel')"
+          severity="secondary"
+          @click="showCreateDialog = false"
+        />
+        <Button
+          :label="t('home.create')"
           @click="handleCreateProject"
           :loading="isCreating"
         />
@@ -87,14 +92,25 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import { useProjects } from '../../../composables/useProjects'
+import { useI18nStore, translations } from '../../../stores/i18n'
 import { MAPS } from '../../../core/database/schemas/project.schema'
 
 const router = useRouter()
+const i18nStore = useI18nStore()
 const { sortedProjects, isCreating, createNewProject, deleteProjectItem, getMapInfo } = useProjects()
 
 const showCreateDialog = ref(false)
 const newProjectName = ref('')
 const newProjectMapId = ref('inspection-t24')
+
+const t = (key: string) => {
+  const keys = key.split('.')
+  let obj: any = translations[i18nStore.locale]
+  for (const k of keys) {
+    obj = obj?.[k]
+  }
+  return obj || key
+}
 
 const mapOptions = computed(() =>
   Object.values(MAPS).map(map => ({
@@ -119,7 +135,7 @@ const selectProject = (projectId: string) => {
 }
 
 const deleteProject = async (projectId: string) => {
-  if (confirm('Tem certeza que deseja deletar este projeto?')) {
+  if (confirm(t('home.delete_confirm'))) {
     await deleteProjectItem(projectId)
   }
 }

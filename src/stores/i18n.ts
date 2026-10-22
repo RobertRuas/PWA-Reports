@@ -1,60 +1,204 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
-type Language = 'pt' | 'en'
+export type Language = 'pt' | 'en'
 
-const translations = {
+export const translations: Record<Language, Record<string, any>> = {
   pt: {
     app_name: 'PWA Reports',
-    no_projects: 'Nenhum projeto ainda',
-    create_new_project: 'Novo Projeto',
-    projects: 'Projetos',
-    settings: 'Configurações',
-    empty_state_title: 'Nenhum projeto criado',
-    empty_state_message: 'Crie seu primeiro projeto para começar a organizar fotos',
-    create_project: 'Criar Projeto',
-    project_name: 'Nome do Projeto',
-    map_selection: 'Escolha um mapa',
-    language: 'Idioma',
-    inspection_t24: 'Inspeção T1–T24',
-    tendons_retrofit: 'Retrofit de Tendões',
-    about: 'Sobre',
-    about_description: 'Organiza fotos de trabalho com triagem, revisão e exportação ZIP',
+    home: {
+      title: 'Projetos',
+      no_projects: 'Nenhum projeto ainda',
+      new_project: 'Novo Projeto',
+      empty_title: 'Nenhum projeto criado',
+      empty_message: 'Crie seu primeiro projeto para começar a organizar fotos',
+      project_name: 'Nome do Projeto',
+      map_selection: 'Escolha um mapa',
+      create: 'Criar',
+      cancel: 'Cancelar',
+      delete_confirm: 'Tem certeza que deseja deletar este projeto?',
+    },
+    project: {
+      photos: 'Fotos',
+      inbox: 'Inbox',
+      organized: 'Organizadas',
+      triage: 'Triagem',
+      triage_desc: 'Envie fotos e organizeas no Inbox',
+      review: 'Revisão',
+      review_desc: 'Organize fotos em pastas arrastandas',
+      export: 'Exportar',
+      export_desc: 'Baixe um ZIP pronto para FastReport',
+      back: 'Voltar',
+    },
+    triage: {
+      title: 'Triagem',
+      subtitle: 'Organize fotos',
+      upload_hint: 'Arraste fotos aqui ou clique para selecionar',
+      select: 'Selecionar Fotos',
+      no_photos: 'Nenhuma foto ainda',
+      review_btn: 'Revisar',
+    },
+    review: {
+      title: 'Revisão',
+      subtitle: 'Organize em pastas',
+      empty_trash: 'Lixeira vazia',
+      empty_folder: 'Nenhuma foto',
+    },
+    viewer: {
+      delete_confirm: 'Tem certeza que deseja deletar esta foto?',
+    },
+    export: {
+      title: 'Exportar',
+      subtitle: 'Gerar ZIP',
+      project_name: 'Nome do projeto',
+      photos_count: 'Fotos',
+      format: 'Formato',
+      download_btn: 'Baixar ZIP',
+      downloading: 'Baixando...',
+      structure: 'Estrutura do ZIP',
+      compatible: 'Compatível com FastReport para Mac',
+      project_info: 'Informações',
+      export_error: 'Erro ao exportar',
+    },
+    settings: {
+      title: 'Configurações',
+      language: 'Idioma',
+      chooseLanguage: 'Escolha seu idioma',
+      languageHint: 'A mudança será aplicada imediatamente',
+      theme: 'Tema',
+      themeMode: 'Modo de tema',
+      light: 'Claro',
+      dark: 'Escuro',
+      auto: 'Automático',
+      themeHint: 'Escolha como a aplicação deve aparecer',
+      storage: 'Armazenamento',
+      totalProjects: 'Projetos totais',
+      totalPhotos: 'Fotos totais',
+      dbSize: 'Tamanho do BD',
+      clearCache: 'Limpar Cache',
+      confirmClearCache: 'Tem certeza que deseja limpar o cache? Isso deletará todos os dados.',
+      cacheCleared: 'Cache limpo com sucesso',
+      errorClearingCache: 'Erro ao limpar o cache',
+      about: 'Sobre',
+      version: 'Versão',
+      description: 'Organiza fotos de trabalho com triagem, revisão e exportação ZIP',
+      features: 'Funcionalidades',
+      feature1: 'Gerenciamento de projetos offline',
+      feature2: 'Upload e triagem de fotos',
+      feature3: 'Organização em pastas por drag-drop',
+      feature4: 'Exportação em ZIP compatível com FastReport',
+      offline: 'Esta aplicação funciona completamente offline após o carregamento inicial',
+    },
+    maps: {
+      inspection_t24: 'Inspeção T1–T24',
+      tendons_retrofit: 'Retrofit de Tendões',
+    },
   },
   en: {
     app_name: 'PWA Reports',
-    no_projects: 'No projects yet',
-    create_new_project: 'New Project',
-    projects: 'Projects',
-    settings: 'Settings',
-    empty_state_title: 'No projects created',
-    empty_state_message: 'Create your first project to start organizing photos',
-    create_project: 'Create Project',
-    project_name: 'Project Name',
-    map_selection: 'Choose a map',
-    language: 'Language',
-    inspection_t24: 'Inspection T1–T24',
-    tendons_retrofit: 'Tendons Retrofit',
-    about: 'About',
-    about_description: 'Organize work photos with triage, review and ZIP export',
+    home: {
+      title: 'Projects',
+      no_projects: 'No projects yet',
+      new_project: 'New Project',
+      empty_title: 'No projects created',
+      empty_message: 'Create your first project to start organizing photos',
+      project_name: 'Project Name',
+      map_selection: 'Choose a map',
+      create: 'Create',
+      cancel: 'Cancel',
+      delete_confirm: 'Are you sure you want to delete this project?',
+    },
+    project: {
+      photos: 'Photos',
+      inbox: 'Inbox',
+      organized: 'Organized',
+      triage: 'Triage',
+      triage_desc: 'Upload photos and organize in Inbox',
+      review: 'Review',
+      review_desc: 'Organize photos in folders by dragging',
+      export: 'Export',
+      export_desc: 'Download a ZIP ready for FastReport',
+      back: 'Back',
+    },
+    triage: {
+      title: 'Triage',
+      subtitle: 'Organize photos',
+      upload_hint: 'Drag photos here or click to select',
+      select: 'Select Photos',
+      no_photos: 'No photos yet',
+      review_btn: 'Review',
+    },
+    review: {
+      title: 'Review',
+      subtitle: 'Organize in folders',
+      empty_trash: 'Trash is empty',
+      empty_folder: 'No photos',
+    },
+    viewer: {
+      delete_confirm: 'Are you sure you want to delete this photo?',
+    },
+    export: {
+      title: 'Export',
+      subtitle: 'Generate ZIP',
+      project_name: 'Project name',
+      photos_count: 'Photos',
+      format: 'Format',
+      download_btn: 'Download ZIP',
+      downloading: 'Downloading...',
+      structure: 'ZIP Structure',
+      compatible: 'Compatible with FastReport for Mac',
+      project_info: 'Information',
+      export_error: 'Error exporting',
+    },
+    settings: {
+      title: 'Settings',
+      language: 'Language',
+      chooseLanguage: 'Choose your language',
+      languageHint: 'Changes are applied immediately',
+      theme: 'Theme',
+      themeMode: 'Theme mode',
+      light: 'Light',
+      dark: 'Dark',
+      auto: 'Auto',
+      themeHint: 'Choose how the app should appear',
+      storage: 'Storage',
+      totalProjects: 'Total projects',
+      totalPhotos: 'Total photos',
+      dbSize: 'Database size',
+      clearCache: 'Clear Cache',
+      confirmClearCache: 'Are you sure you want to clear the cache? This will delete all data.',
+      cacheCleared: 'Cache cleared successfully',
+      errorClearingCache: 'Error clearing cache',
+      about: 'About',
+      version: 'Version',
+      description: 'Organize work photos with triage, review and ZIP export',
+      features: 'Features',
+      feature1: 'Offline project management',
+      feature2: 'Photo upload and triage',
+      feature3: 'Folder organization by drag-drop',
+      feature4: 'ZIP export compatible with FastReport',
+      offline: 'This app works completely offline after initial load',
+    },
+    maps: {
+      inspection_t24: 'Inspection T1–T24',
+      tendons_retrofit: 'Tendons Retrofit',
+    },
   },
 }
 
 export const useI18nStore = defineStore('i18n', () => {
-  const language = ref<Language>(
+  const locale = ref<Language>(
     (localStorage.getItem('language') as Language) || 'pt'
   )
 
-  const t = computed(() => translations[language.value])
-
-  const setLanguage = (lang: Language) => {
-    language.value = lang
+  const setLocale = (lang: Language) => {
+    locale.value = lang
     localStorage.setItem('language', lang)
   }
 
   return {
-    language,
-    t,
-    setLanguage,
+    locale,
+    translations,
+    setLocale,
   }
 })
