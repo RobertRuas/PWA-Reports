@@ -5,7 +5,7 @@
     :title="tooltipText"
   >
     <span class="chip-dot"></span>
-    <span class="chip-label">{{ isOnline ? 'Online' : 'Offline' }}</span>
+    <span class="chip-label">{{ chipLabel }}</span>
   </div>
 </template>
 
@@ -13,20 +13,38 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const isOnline = ref(true)
+const lastOnlineDate = ref<string | null>(null)
+const lastOnlineTime = ref<string | null>(null)
+
+// Quando offline, mostrar data e hora da última conexão
+const chipLabel = computed(() => {
+  if (isOnline.value) return 'Online'
+  if (lastOnlineDate.value && lastOnlineTime.value) {
+    return `Offline · ${lastOnlineDate.value} ${lastOnlineTime.value}`
+  }
+  return 'Offline'
+})
 
 const tooltipText = computed(() => {
-  const lastTime = localStorage.getItem('lastOnlineTime')
-  if (!lastTime) return isOnline.value ? 'Online' : 'Offline'
-  return `${isOnline.value ? 'Online' : 'Offline'} · Última: ${lastTime}`
+  if (isOnline.value) return 'Conectado'
+  if (lastOnlineDate.value && lastOnlineTime.value) {
+    return `Última conexão: ${lastOnlineDate.value} às ${lastOnlineTime.value}`
+  }
+  return 'Sem conexão'
 })
 
 const updateConnectionTime = () => {
   const now = new Date()
-  const timeStr = now.toLocaleTimeString('pt-BR', {
+  lastOnlineTime.value = now.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
   })
-  localStorage.setItem('lastOnlineTime', timeStr)
+  lastOnlineDate.value = now.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+  })
+  localStorage.setItem('lastOnlineTime', lastOnlineTime.value)
+  localStorage.setItem('lastOnlineDate', lastOnlineDate.value)
 }
 
 const checkConnection = () => {
@@ -37,6 +55,9 @@ const checkConnection = () => {
 }
 
 onMounted(() => {
+  // Restaurar última conexão do localStorage
+  lastOnlineTime.value = localStorage.getItem('lastOnlineTime')
+  lastOnlineDate.value = localStorage.getItem('lastOnlineDate')
   checkConnection()
   window.addEventListener('online', checkConnection)
   window.addEventListener('offline', checkConnection)

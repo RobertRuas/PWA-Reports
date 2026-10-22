@@ -37,6 +37,13 @@
         </div>
       </div>
 
+      <!-- Botão iniciar categorização -->
+      <button v-if="inboxPhotos.length > 0" class="start-triage-btn" @click="startCategorization">
+        <i class="pi pi-images"></i>
+        <strong>Categorizar {{ inboxPhotos.length }} foto(s)</strong>
+        <i class="pi pi-chevron-right"></i>
+      </button>
+
       <!-- Photos Grid -->
       <div v-if="allPhotos.length > 0" class="photos-container">
         <div class="grid-header">
@@ -87,6 +94,7 @@ const uploadedCount = ref(0)
 const totalUploadCount = ref(0)
 
 const allPhotos = computed(() => photoStore.projectPhotos)
+const inboxPhotos = computed(() => allPhotos.value.filter(p => p.folder === 'Inbox'))
 
 onMounted(async () => {
   projectId.value = route.params.projectId as string
@@ -140,6 +148,11 @@ const getPhotoUrl = (photo: Photo) => {
 
 const viewPhoto = (photo: Photo) => {
   router.push(`/project/${projectId.value}/viewer/${photo.id}`)
+}
+
+// Navegar para revisão para iniciar categorização das fotos do Inbox
+const startCategorization = () => {
+  router.push(`/project/${projectId.value}/review`)
 }
 </script>
 
@@ -270,6 +283,43 @@ const viewPhoto = (photo: Photo) => {
 .progress-count {
   font-size: 0.75rem;
   color: var(--p-text-color-secondary);
+}
+
+/* ========= Botão categorizar ========= */
+.start-triage-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--p-primary-50);
+  border: 2px solid var(--p-primary-color);
+  border-radius: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+  color: var(--p-primary-color);
+  transition: all 0.15s;
+}
+
+.start-triage-btn:active {
+  transform: scale(0.98);
+  background: var(--p-primary-100);
+}
+
+.start-triage-btn i:first-child {
+  font-size: 1.1rem;
+}
+
+.start-triage-btn strong {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--p-text-color);
+}
+
+.start-triage-btn .pi-chevron-right {
+  font-size: 0.8rem;
+  opacity: 0.6;
 }
 
 /* ========= Photos grid ========= */

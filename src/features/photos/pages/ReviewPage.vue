@@ -9,7 +9,7 @@
           :src="currentPhotoUrl"
           :alt="currentPhoto.filename"
           :style="imageTransformStyle"
-          class="viewer-image"
+          :class="['viewer-image', { 'move-out': moveAnimating }]"
         />
       </div>
 
@@ -92,13 +92,29 @@
         <div class="folder-header">
           <strong class="folder-name">{{ folder }}</strong>
           <span class="folder-count">{{ getFolderCount(folder) }}</span>
+          <!-- Botão expandir/colapsar para Inbox -->
+          <button
+            v-if="folder === 'Inbox' && getFolderCount(folder) > inboxPreviewCount"
+            class="see-more-btn"
+            @click="inboxExpanded = !inboxExpanded"
+          >
+            {{ inboxExpanded ? 'Ver menos' : `Ver mais (${getFolderCount(folder) - inboxPreviewCount})` }}
+          </button>
         </div>
         <div class="folder-photos-grid" :style="gridStyle">
           <div
-            v-for="photo in getPhotosInFolder(folder)"
+            v-for="photo in getVisiblePhotos(folder)"
             :key="photo.id"
-            :class="['photo-thumb', { selected: selectedPhotos.has(photo.id) }]"
+            :class="['photo-thumb', { selected: selectedPhotos.has(photo.id), dragging: dragPhotoId === photo.id }]"
+            :draggable="!selectionMode"
             @click="handlePhotoClick(photo)"
+            @dragstart="onDragStart($event, photo, folder)"
+            @dragover.prevent="onDragOver($event, photo)"
+            @drop.prevent="onDrop($event, photo, folder)"
+            @dragend="onDragEnd"
+            @touchstart="onReorderTouchStart($event, photo, folder)"
+            @touchmove="onReorderTouchMove($event)"
+            @touchend="onReorderTouchEnd($event, folder)"
           >
             <img :src="getPhotoUrl(photo)" :alt="photo.filename" loading="lazy" />
             <div v-if="selectionMode" class="select-overlay">
@@ -150,6 +166,20 @@ const touchStartY = ref(0)
 const touchCurrentY = ref(0)
 const isSwiping = ref(false)
 
+// Inbox colapsado
+const inboxExpanded = ref(false)
+const inboxPreviewCount = ref(0) // Calculado com base na largura da tela
+
+// Drag-to-reorder
+const dragPhotoId = ref<string | null>(null)
+const dragOverPhotoId = ref<string | null>(null)
+const reorderTouchPhoto = ref<Photo | null>(null)
+const reorderTouchStartTime = ref(0)
+const reorderTouchActive = ref(false)
+
+// Animação ao categorizar
+const moveAnimating = ref(false)
+
 // Cache de URLs
 const photoUrlCache = new Map<string, string>()
 
@@ -195,13 +225,12 @@ const imageTransformStyle = computed(() => {
 // Grid style baseado no zoom
 const gridStyle = computed(() => {
   if (zoomMode.value === 'auto') {
-    // Modo auto: uma só linha por pasta
-    return { gridTemplateColumns: `repeat(auto-fill, minmax(${thumbSize.value}px, 1fr))`, flexWrap: 'nowrap' as const }
+    return { gridTemplateColumns: `repeat(auto-fill, minmax(${thumbSize.value}px, 1fr))` }
   }
   return { gridTemplateColumns: `repeat(auto-fill, minmax(${thumbSize.value}px, 1fr))` }
 })
 
-// Calcular tamanho máximo para modo auto
+// Calcular tamanho máximo para modo auto (pasta com mais fotos)
 const maxFolderPhotoCount = computed(() => {
   let max = 0
   for (const folder of mapFolders.value) {
@@ -223,6 +252,7 @@ onMounted(async () => {
       mapFolders.value = [...mapInfo.folders]
     }
   }
+  calcInboxPreviewCount()
 })
 
 onUnmounted(() => {
@@ -326,26 +356,41 @@ const undoMove = async () => {
 
 const moveCurrentPhoto = async (folder: string) => {
   const photo = currentPhoto.value
-  if (!photo) return
+  if (!photo || photo.folder === folder) return
 
   lastMove.value = { photoId: photo.id, fromFolder: photo.folder }
+
+  // Animação de saída
+  moveAnimating.value = true
+
   await photoStore.movePhoto(photo.id, folder, projectName.value)
   resetImageTransform()
 
-  // Invalidar cache da foto movida
+  // Invalidar cache da foto movida e recriar URL com os dados atuais
   if (photoUrlCache.has(photo.id)) {
     URL.revokeObjectURL(photoUrlCache.get(photo.id)!)
     photoUrlCache.delete(photo.id)
+  }
+  // Recriar URL com o blob atual (garante que a imagem continua a funcionar)
+  if (photo.data) {
+    const newUrl = URL.createObjectURL(photo.data)
+    photoUrlCache.set(photo.id, newUrl)
   }
 
   if (reviewPhotos.value.length === 0) {
     closeViewer()
     return
   }
+
+  // Auto-avanço para próxima foto
   if (currentIndex.value >= reviewPhotos.value.length) {
     currentIndex.value = reviewPhotos.value.length - 1
   }
-  // Recarregar imagem no novo local
+
+  // Pequeno delay para animação
+  await new Promise(resolve => setTimeout(resolve, 200))
+  moveAnimating.value = false
+
   updatePhotoUrl()
 }
 
@@ -386,11 +431,14 @@ const zoomOut = () => {
 const setZoomMode = (mode: 'auto' | 'manual') => {
   zoomMode.value = mode
   if (mode === 'auto') {
-    // Calcular tamanho baseado na pasta com mais fotos
-    const screenWidth = window.innerWidth - 32 // padding
+    // Calcular tamanho para que a pasta com mais fotos caiba em 1 linha
+    const screenWidth = window.innerWidth - 32 // padding lateral
     if (maxFolderPhotoCount.value > 0) {
-      thumbSize.value = Math.max(40, Math.floor(screenWidth / maxFolderPhotoCount.value) - 4)
+      const gap = 3 // gap entre fotos
+      const availableWidth = screenWidth - (maxFolderPhotoCount.value - 1) * gap
+      thumbSize.value = Math.max(30, Math.min(120, Math.floor(availableWidth / maxFolderPhotoCount.value)))
     }
+    calcInboxPreviewCount()
   }
 }
 
@@ -412,6 +460,94 @@ const uncategorizeSelectedPhotos = async () => {
   if (selectedPhotos.value.size === 0) return
   await photoStore.uncategorizePhotos(Array.from(selectedPhotos.value))
   selectedPhotos.value = new Set()
+}
+
+// Fotos visíveis por pasta (Inbox colapsado mostra apenas 1 linha)
+const getVisiblePhotos = (folder: string) => {
+  const photos = getPhotosInFolder(folder)
+  if (folder === 'Inbox' && !inboxExpanded.value && photos.length > inboxPreviewCount.value) {
+    return photos.slice(0, inboxPreviewCount.value)
+  }
+  return photos
+}
+
+// Calcular quantas fotos cabem em uma linha do Inbox
+const calcInboxPreviewCount = () => {
+  const screenWidth = window.innerWidth - 32 // padding
+  const size = zoomMode.value === 'auto' ? thumbSize.value : thumbSize.value
+  inboxPreviewCount.value = Math.max(3, Math.floor(screenWidth / (size + 4)))
+}
+
+// ========= Drag-to-reorder dentro de pastas =========
+const onDragStart = (e: DragEvent, photo: Photo, _folder: string) => {
+  dragPhotoId.value = photo.id
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', photo.id)
+  }
+}
+
+const onDragOver = (_e: DragEvent, photo: Photo) => {
+  dragOverPhotoId.value = photo.id
+}
+
+const onDrop = async (_e: DragEvent, targetPhoto: Photo, folder: string) => {
+  if (!dragPhotoId.value || dragPhotoId.value === targetPhoto.id) {
+    dragPhotoId.value = null
+    dragOverPhotoId.value = null
+    return
+  }
+  await reorderPhotos(dragPhotoId.value, targetPhoto.id, folder)
+  dragPhotoId.value = null
+  dragOverPhotoId.value = null
+}
+
+const onDragEnd = () => {
+  dragPhotoId.value = null
+  dragOverPhotoId.value = null
+}
+
+// Touch-based reorder (long-press to start)
+const onReorderTouchStart = (_e: TouchEvent, photo: Photo, _folder: string) => {
+  reorderTouchPhoto.value = photo
+  reorderTouchStartTime.value = Date.now()
+  reorderTouchActive.value = false
+}
+
+const onReorderTouchMove = (_e: TouchEvent) => {
+  // Se pressionou por mais de 500ms, ativar modo reorder
+  if (Date.now() - reorderTouchStartTime.value > 500 && reorderTouchPhoto.value) {
+    reorderTouchActive.value = true
+    dragPhotoId.value = reorderTouchPhoto.value.id
+  }
+}
+
+const onReorderTouchEnd = async (_e: TouchEvent, folder: string) => {
+  if (reorderTouchActive.value && dragPhotoId.value && dragOverPhotoId.value) {
+    await reorderPhotos(dragPhotoId.value, dragOverPhotoId.value, folder)
+  }
+  reorderTouchPhoto.value = null
+  reorderTouchActive.value = false
+  dragPhotoId.value = null
+  dragOverPhotoId.value = null
+}
+
+// Reordenar fotos dentro de uma pasta
+const reorderPhotos = async (sourceId: string, targetId: string, folder: string) => {
+  const folderPhotos = getPhotosInFolder(folder)
+  const sourceIdx = folderPhotos.findIndex(p => p.id === sourceId)
+  const targetIdx = folderPhotos.findIndex(p => p.id === targetId)
+
+  if (sourceIdx < 0 || targetIdx < 0) return
+
+  // Reorganizar no array local
+  const [movedPhoto] = folderPhotos.splice(sourceIdx, 1)
+  folderPhotos.splice(targetIdx, 0, movedPhoto)
+
+  // Atualizar nomes e persistir
+  if (projectName.value) {
+    await photoStore.renumberFolderPhotos(projectId.value, folder, projectName.value)
+  }
 }
 </script>
 
@@ -614,6 +750,11 @@ const uncategorizeSelectedPhotos = async () => {
   object-fit: cover;
 }
 
+.photo-thumb.dragging {
+  opacity: 0.4;
+  outline: 2px dashed var(--p-primary-color);
+}
+
 .select-overlay {
   position: absolute;
   top: 4px;
@@ -621,6 +762,26 @@ const uncategorizeSelectedPhotos = async () => {
   color: var(--p-primary-color);
   font-size: 1.1rem;
   text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Botão "Ver mais" para Inbox */
+.see-more-btn {
+  margin-left: auto;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--p-primary-200, var(--p-surface-300));
+  border-radius: 6px;
+  background: var(--p-primary-50);
+  color: var(--p-primary-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.15s;
+}
+
+.see-more-btn:active {
+  transform: scale(0.95);
+  background: var(--p-primary-100);
 }
 
 /* ========= Empty state ========= */
@@ -686,7 +847,12 @@ const uncategorizeSelectedPhotos = async () => {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, opacity 0.2s ease;
+}
+
+.viewer-image.move-out {
+  opacity: 0;
+  transform: translateX(-40px) scale(0.95);
 }
 
 /* Barra de controles translúcida sobre a imagem */

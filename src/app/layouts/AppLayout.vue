@@ -3,37 +3,15 @@
     <!-- Barra superior fixa -->
     <div class="app-topbar">
       <Button
-        icon="pi pi-bars"
+        icon="pi pi-home"
         text
         rounded
-        class="topbar-menu-btn"
-        @click="drawerVisible = true"
+        class="topbar-home-btn"
+        @click="goHome"
       />
       <span class="topbar-title">{{ appConfig.name }}</span>
       <ConnectionStatus />
     </div>
-
-    <!-- Drawer lateral (mobile + tablet) -->
-    <Drawer v-model:visible="drawerVisible" :modal="true" class="app-drawer">
-      <template #header>
-        <div class="drawer-header">
-          <i class="pi pi-box" style="font-size: 1.25rem; color: var(--p-primary-color);" />
-          <span class="drawer-app-name">{{ appConfig.name }}</span>
-        </div>
-      </template>
-      <nav class="nav-list">
-        <div
-          v-for="item in navItems"
-          :key="item.route"
-          class="nav-item"
-          :class="{ active: isActive(item.route) }"
-          @click="navigateTo(item.route)"
-        >
-          <i :class="item.icon" class="nav-icon" />
-          <span>{{ item.label }}</span>
-        </div>
-      </nav>
-    </Drawer>
 
     <!-- Sidebar desktop -->
     <aside class="app-sidebar">
@@ -60,6 +38,12 @@
       <AppBreadcrumb />
     </div>
 
+    <!-- Indicador pull-to-refresh -->
+    <div v-if="showPullIndicator" class="pull-indicator" :style="{ transform: `translateY(${pullDistance}px)` }">
+      <i :class="isRefreshing ? 'pi pi-spin pi-spinner' : 'pi pi-arrow-down'" class="pull-icon"></i>
+      <span>{{ isRefreshing ? 'Atualizando...' : 'Solte para atualizar' }}</span>
+    </div>
+
     <!-- Conteúdo principal -->
     <main class="app-main">
       <router-view />
@@ -68,17 +52,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Button from 'primevue/button'
-import Drawer from 'primevue/drawer'
 import ConnectionStatus from '../../components/feedback/ConnectionStatus.vue'
 import AppBreadcrumb from '../../components/ui/AppBreadcrumb.vue'
 import { appConfig } from '../config/app.config'
+import { useSwipeNavigation } from '../../composables/useSwipeNavigation'
+
+// Ativar gestos de navegação (swipe-right hierarquia + pull-to-refresh)
+const { showPullIndicator, pullDistance, isRefreshing } = useSwipeNavigation()
 
 const router = useRouter()
 const route = useRoute()
-const drawerVisible = ref(false)
 
 const navItems = [
   { label: 'Projetos', icon: 'pi pi-home', route: '/home' },
@@ -90,8 +75,11 @@ function isActive(path: string): boolean {
 }
 
 function navigateTo(path: string) {
-  drawerVisible.value = false
   router.push(path)
+}
+
+function goHome() {
+  router.push('/home')
 }
 </script>
 
@@ -126,14 +114,14 @@ function navigateTo(path: string) {
   flex: 1;
 }
 
-/* Ícone de menu maior */
-:deep(.topbar-menu-btn) {
+/* Botão home na topbar */
+:deep(.topbar-home-btn) {
   width: 40px !important;
   height: 40px !important;
 }
 
-:deep(.topbar-menu-btn .p-button-icon) {
-  font-size: 1.25rem !important;
+:deep(.topbar-home-btn .p-button-icon) {
+  font-size: 1.2rem !important;
 }
 
 /* Breadcrumb bar abaixo da topbar */
@@ -144,18 +132,6 @@ function navigateTo(path: string) {
   right: 0;
   z-index: 99;
   background: var(--p-surface-0);
-}
-
-/* Drawer */
-.drawer-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.drawer-app-name {
-  font-weight: 700;
-  font-size: 1rem;
 }
 
 /* Sidebar desktop */
@@ -230,6 +206,33 @@ function navigateTo(path: string) {
   padding-top: 86px;
   min-width: 0;
   overscroll-behavior: none;
+}
+
+/* Pull-to-refresh indicator */
+.pull-indicator {
+  position: fixed;
+  top: 52px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  z-index: 98;
+  pointer-events: none;
+  transition: transform 0.15s ease;
+}
+
+.pull-icon {
+  font-size: 0.85rem;
+  color: var(--p-primary-color);
+}
+
+.pull-indicator span {
+  font-size: 0.75rem;
+  color: var(--p-text-color-secondary);
+  font-weight: 500;
 }
 
 /* Desktop */

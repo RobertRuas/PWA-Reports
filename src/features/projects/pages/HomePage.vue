@@ -118,24 +118,30 @@
 
       <!-- FAB com menu de opções -->
       <div v-if="sortedProjects.length > 0" class="fab-container">
-        <!-- Menu do FAB -->
+        <!-- Backdrop do menu -->
         <div v-if="showFabMenu" class="fab-menu-backdrop" @click="showFabMenu = false"></div>
+        <!-- Menu do FAB -->
         <div v-if="showFabMenu" class="fab-menu">
-          <button class="fab-menu-item" @click="handleCreateNew">
+          <button class="fab-menu-item" @click.stop="handleCreateNew">
             <i class="pi pi-plus"></i>
             <span>Criar novo projeto</span>
           </button>
-          <button class="fab-menu-item" @click="handleImportZip">
+          <button class="fab-menu-item" @click.stop="handleImportZip">
             <i class="pi pi-file-import"></i>
             <span>Importar ZIP</span>
           </button>
         </div>
+        <!-- Botão FAB principal -->
         <button
           class="fab"
           :class="{ active: showFabMenu }"
           @click="showFabMenu = !showFabMenu"
         >
           <i class="pi pi-plus" :class="{ rotated: showFabMenu }"></i>
+        </button>
+        <!-- Ícone de configurações discreto -->
+        <button class="settings-btn" @click="router.push('/settings')">
+          <i class="pi pi-cog"></i>
         </button>
       </div>
 
@@ -496,14 +502,17 @@ const formatDate = (dateString: string) => {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 49;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.15);
 }
 
 .fab-menu {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
   animation: slideUp 0.2s ease;
+  position: relative;
+  z-index: 2;
 }
 
 @keyframes slideUp {
@@ -514,14 +523,14 @@ const formatDate = (dateString: string) => {
 .fab-menu-item {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.6rem 1rem;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
   background: var(--p-surface-0);
   border: 1px solid var(--p-surface-200);
   border-radius: 12px;
   cursor: pointer;
   white-space: nowrap;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--p-text-color);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
@@ -540,9 +549,9 @@ const formatDate = (dateString: string) => {
 }
 
 .fab {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
   border: none;
   background: var(--p-primary-color);
   color: white;
@@ -550,9 +559,11 @@ const formatDate = (dateString: string) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
   transition: all 0.2s ease;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+  z-index: 2;
 }
 
 .fab:active {
@@ -560,12 +571,38 @@ const formatDate = (dateString: string) => {
 }
 
 .fab i {
-  font-size: 1.25rem;
+  font-size: 1.4rem;
   transition: transform 0.2s ease;
 }
 
 .fab i.rotated {
   transform: rotate(45deg);
+}
+
+/* Botão de configurações discreto */
+.settings-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--p-surface-200);
+  background: var(--p-surface-0);
+  color: var(--p-text-color-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.settings-btn:active {
+  transform: scale(0.9);
+  background: var(--p-surface-100);
+}
+
+.settings-btn i {
+  font-size: 0.9rem;
 }
 
 /* ========= Formulário full-screen ========= */
