@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 export type Language = 'pt' | 'en'
 
-export const translations: Record<Language, Record<string, any>> = {
+export const translations: Record<Language, Record<string, Record<string, string> | string>> = {
   pt: {
     app_name: 'PWA Reports',
     home: {

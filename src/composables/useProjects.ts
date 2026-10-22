@@ -1,8 +1,10 @@
 import { onMounted, ref } from 'vue'
 import { useProjectsStore } from '../stores/projects'
+import { storeToRefs } from 'pinia'
 
 export function useProjects() {
   const store = useProjectsStore()
+  const { projects, loading, error, sortedProjects, projectCount } = storeToRefs(store)
   const isCreating = ref(false)
 
   onMounted(async () => {
@@ -24,15 +26,15 @@ export function useProjects() {
   }
 
   return {
-    // State
-    projects: store.projects,
-    loading: store.loading,
-    error: store.error,
+    // State (reactive refs via storeToRefs)
+    projects,
+    loading,
+    error,
     isCreating,
 
-    // Computed
-    projectCount: store.projectCount,
-    sortedProjects: store.sortedProjects,
+    // Computed (reactive refs via storeToRefs)
+    projectCount,
+    sortedProjects,
 
     // Methods
     createNewProject,

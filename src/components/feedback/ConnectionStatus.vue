@@ -1,35 +1,23 @@
 <template>
-  <div class="connection-status" :title="tooltipText">
-    <div class="status-indicator" :class="statusClass">
-      <i :class="statusIcon"></i>
-    </div>
-    <div class="status-info">
-      <div class="status-label">{{ statusLabel }}</div>
-      <div class="status-time">{{ lastConnectionTime }}</div>
-    </div>
+  <div
+    class="connection-chip"
+    :class="isOnline ? 'online' : 'offline'"
+    :title="tooltipText"
+  >
+    <span class="chip-dot"></span>
+    <span class="chip-label">{{ isOnline ? 'Online' : 'Offline' }}</span>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const isOnline = ref(true)
-const lastConnectionTime = ref('')
-
-const statusClass = computed(() => isOnline.value ? 'online' : 'offline')
-
-const statusIcon = computed(() =>
-  isOnline.value ? 'pi pi-circle-fill' : 'pi pi-circle'
-)
-
-const statusLabel = computed(() =>
-  isOnline.value ? 'Online' : 'Offline'
-)
 
 const tooltipText = computed(() => {
   const lastTime = localStorage.getItem('lastOnlineTime')
-  if (!lastTime) return `${statusLabel.value}`
-  return `${statusLabel.value} · Última atualização: ${lastTime}`
+  if (!lastTime) return isOnline.value ? 'Online' : 'Offline'
+  return `${isOnline.value ? 'Online' : 'Offline'} · Última: ${lastTime}`
 })
 
 const updateConnectionTime = () => {
@@ -37,116 +25,83 @@ const updateConnectionTime = () => {
   const timeStr = now.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
   })
   localStorage.setItem('lastOnlineTime', timeStr)
-  lastConnectionTime.value = timeStr
 }
 
 const checkConnection = () => {
-  // Check if online
-  const online = navigator.onLine
-  isOnline.value = online
-
-  // Update time if online
-  if (online) {
+  isOnline.value = navigator.onLine
+  if (isOnline.value) {
     updateConnectionTime()
-  }
-
-  // Load last connection time
-  const stored = localStorage.getItem('lastOnlineTime')
-  if (stored) {
-    lastConnectionTime.value = stored
   }
 }
 
 onMounted(() => {
   checkConnection()
-
   window.addEventListener('online', checkConnection)
   window.addEventListener('offline', checkConnection)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('online', checkConnection)
+  window.removeEventListener('offline', checkConnection)
 })
 </script>
 
 <style scoped>
-.connection-status {
-  display: flex;
+.connection-chip {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.8rem;
-  background: var(--p-surface-50);
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
   border-radius: 20px;
-  cursor: help;
-  font-size: 0.75rem;
-  transition: all 0.3s ease;
-}
-
-.status-indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.5rem;
-  transition: all 0.3s ease;
-}
-
-.status-indicator.online {
-  background: var(--p-success-color);
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
-  color: white;
-}
-
-.status-indicator.online i {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
-.status-indicator.offline {
-  background: var(--p-surface-400);
-  color: var(--p-text-color);
-}
-
-.status-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.status-label {
+  font-size: 0.7rem;
   font-weight: 600;
-  color: var(--p-text-color);
+  cursor: help;
+  transition: all 0.3s ease;
   line-height: 1;
 }
 
-.status-time {
-  font-size: 0.65rem;
-  color: var(--p-text-color-secondary);
-  line-height: 1;
+.connection-chip.online {
+  background: #ecfdf5;
+  color: #15803d;
 }
 
-@media (max-width: 600px) {
-  .connection-status {
-    padding: 0.3rem 0.6rem;
-    gap: 0.3rem;
-  }
+.connection-chip.offline {
+  background: #fefce8;
+  color: #a16207;
+}
 
-  .status-info {
-    display: none;
-  }
+.chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 
-  .status-indicator {
-    width: 8px;
-    height: 8px;
-  }
+.connection-chip.online .chip-dot {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+  animation: pulse-green 2s infinite;
+}
+
+.connection-chip.offline .chip-dot {
+  background: #eab308;
+  box-shadow: 0 0 6px rgba(234, 179, 8, 0.4);
+  animation: pulse-yellow 2s infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(34, 197, 94, 0.4); }
+  50% { opacity: 0.7; box-shadow: 0 0 8px rgba(34, 197, 94, 0.6); }
+}
+
+@keyframes pulse-yellow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(234, 179, 8, 0.3); }
+  50% { opacity: 0.7; box-shadow: 0 0 8px rgba(234, 179, 8, 0.5); }
+}
+
+.chip-label {
+  white-space: nowrap;
 }
 </style>

@@ -29,14 +29,14 @@
           <Button
             :label="isExporting ? 'Baixando...' : 'Baixar ZIP'"
             icon="pi pi-download"
-            @click="handleExport"
             :loading="isExporting"
             class="export-button"
+            @click="handleExport"
           />
         </template>
       </Card>
 
-      <Card class="info-card" v-if="project">
+      <Card v-if="project" class="info-card">
         <template #title>
           <i class="pi pi-info-circle" style="margin-right: 0.5rem;"></i>
           Estrutura

@@ -6,6 +6,7 @@
         icon="pi pi-bars"
         text
         rounded
+        size="small"
         class="topbar-menu-btn"
         @click="drawerVisible = true"
       />
@@ -17,7 +18,7 @@
     <Drawer v-model:visible="drawerVisible" :modal="true" class="app-drawer">
       <template #header>
         <div class="drawer-header">
-          <i class="pi pi-box" style="font-size: 1.5rem; color: var(--p-primary-color);" />
+          <i class="pi pi-box" style="font-size: 1.25rem; color: var(--p-primary-color);" />
           <span class="drawer-app-name">{{ appConfig.name }}</span>
         </div>
       </template>
@@ -95,7 +96,7 @@ const navItems = [
 
 const bottomTabs = [
   { label: 'Projetos', icon: 'pi pi-home', route: '/home' },
-  { label: 'Configurações', icon: 'pi pi-cog', route: '/settings' },
+  { label: 'Config', icon: 'pi pi-cog', route: '/settings' },
 ]
 
 function isActive(path: string): boolean {
@@ -115,17 +116,17 @@ function navigateTo(path: string) {
   min-height: 100dvh;
 }
 
-/* Top bar - visible on mobile/tablet */
+/* Top bar - compact for mobile */
 .app-topbar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 48px;
-  padding: 0 0.75rem;
+  height: 44px;
+  padding: 0 0.6rem;
   background: var(--p-surface-0);
   border-bottom: 1px solid var(--p-surface-200);
   z-index: 100;
@@ -133,7 +134,7 @@ function navigateTo(path: string) {
 
 .topbar-title {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.9rem;
   flex: 1;
 }
 
@@ -153,11 +154,11 @@ function navigateTo(path: string) {
   font-size: 1rem;
 }
 
-/* Desktop sidebar - hidden on mobile */
+/* Desktop sidebar */
 .app-sidebar {
   display: none;
-  width: 250px;
-  min-width: 250px;
+  width: 220px;
+  min-width: 220px;
   background: var(--p-surface-0);
   border-right: 1px solid var(--p-surface-200);
   padding: 1rem 0;
@@ -189,15 +190,6 @@ function navigateTo(path: string) {
   padding: 0 0.75rem;
 }
 
-.nav-section-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--p-text-muted-color);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0.25rem 0.75rem;
-}
-
 .nav-item {
   display: flex;
   align-items: center;
@@ -208,6 +200,7 @@ function navigateTo(path: string) {
   font-size: 0.8125rem;
   color: var(--p-text-color);
   transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .nav-item:hover {
@@ -229,13 +222,13 @@ function navigateTo(path: string) {
 /* Main content */
 .app-main {
   flex: 1;
-  padding-top: 48px;
-  padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+  padding-top: 44px;
+  padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
   min-width: 0;
   overflow-y: auto;
 }
 
-/* Bottom tabs - visible on mobile */
+/* Bottom tabs - compact */
 .app-bottom-tabs {
   display: flex;
   position: fixed;
@@ -254,12 +247,14 @@ function navigateTo(path: string) {
   flex-direction: column;
   align-items: center;
   gap: 1px;
-  padding: 0.375rem 0;
+  padding: 0.3rem 0;
   background: none;
   border: none;
   color: var(--p-text-muted-color);
   cursor: pointer;
   font-size: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s;
 }
 
 .bottom-tab.active {
@@ -267,14 +262,15 @@ function navigateTo(path: string) {
 }
 
 .bottom-tab-icon {
-  font-size: 1.125rem;
+  font-size: 1.1rem;
 }
 
 .bottom-tab-label {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
+  font-weight: 500;
 }
 
-/* Desktop: show sidebar, hide topbar and bottom tabs */
+/* Desktop */
 @media (min-width: 992px) {
   .app-topbar {
     display: none;
@@ -289,7 +285,7 @@ function navigateTo(path: string) {
   }
 
   .app-main {
-    margin-left: 250px;
+    margin-left: 220px;
     padding-top: 0;
     padding-bottom: 0;
   }

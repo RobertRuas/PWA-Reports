@@ -1,147 +1,155 @@
 <template>
   <div class="home-page">
-    <PageHeader :title="t('home.title')" subtitle="PWA Reports" />
-
-    <div class="content">
-      <!-- Warning Banner -->
-      <div v-if="projectsWithoutExport.length > 0" class="warning-banner">
-        <i class="pi pi-info-circle"></i>
-        <span>{{ projectsWithoutExport.length }} {{ projectsWithoutExport.length === 1 ? 'projeto não exportado' : 'projetos não exportados' }}. Exporte antes de deletar.</span>
-      </div>
-
-      <div v-if="sortedProjects.length === 0" class="empty-state">
-        <i class="pi pi-inbox"></i>
-        <h2>{{ t('home.empty_title') }}</h2>
-        <p>{{ t('home.empty_message') }}</p>
+    <!-- Modo de criação full-screen -->
+    <div v-if="showCreateForm" class="create-page">
+      <div class="create-page-header">
         <Button
-          :label="t('home.new_project')"
-          icon="pi pi-plus"
-          @click="showCreateDialog = true"
+          icon="pi pi-arrow-left"
+          text
+          rounded
+          size="small"
+          @click="showCreateForm = false"
         />
+        <h2>Novo Projeto</h2>
+        <div style="width: 32px;"></div>
       </div>
 
-      <div v-else class="projects-grid">
-        <div
-          v-for="project in sortedProjects"
-          :key="project.id"
-          class="project-card"
-          @click="selectProject(project.id)"
-        >
-          <div class="card-status">
-            <div v-if="isProjectExported(project.id)" class="exported-badge">
-              <i class="pi pi-check"></i> Exportado
-            </div>
-            <div v-else class="pending-badge">
-              <i class="pi pi-exclamation-circle"></i> Não exportado
-            </div>
-          </div>
+      <div class="create-page-content">
+        <div class="create-illustration">
+          <i class="pi pi-folder-plus"></i>
+        </div>
 
-          <div class="card-header">
-            <h3>{{ project.name }}</h3>
-            <Button
-              icon="pi pi-trash"
-              text
-              severity="danger"
-              size="small"
-              @click.stop="deleteProject(project.id)"
+        <div class="create-form-fields">
+          <div class="form-field">
+            <label>Nome do projeto</label>
+            <InputText
+              v-model="newProjectName"
+              placeholder="Ex: Inspeção Ponte Norte"
+              class="form-input"
             />
           </div>
 
-          <div class="card-info">
-            <p class="map-name">
-              <i class="pi pi-map"></i>
-              {{ getMapInfo(project.mapId)?.name }}
-            </p>
-            <p class="date">
-              <i class="pi pi-calendar"></i>
-              {{ formatDate(project.createdAt) }}
-            </p>
-          </div>
-
-          <div class="card-footer">
-            <i class="pi pi-arrow-right"></i>
+          <div class="form-field">
+            <label>Tipo de mapa</label>
+            <Dropdown
+              v-model="newProjectMapId"
+              :options="mapOptions"
+              option-label="label"
+              option-value="value"
+              class="form-input"
+            />
           </div>
         </div>
 
-        <div class="add-project-card" @click="showCreateDialog = true">
-          <i class="pi pi-plus"></i>
-          <p>{{ t('home.new_project') }}</p>
+        <div class="create-form-actions">
+          <Button
+            label="Criar Projeto"
+            icon="pi pi-check"
+            :loading="isCreating"
+            :disabled="!newProjectName.trim()"
+            class="create-submit-btn"
+            @click="handleCreateProject"
+          />
+          <Button
+            label="Cancelar"
+            severity="secondary"
+            text
+            class="create-cancel-btn"
+            @click="showCreateForm = false"
+          />
         </div>
       </div>
     </div>
+
+    <!-- Página principal -->
+    <template v-else>
+      <PageHeader :title="t('home.title')" subtitle="PWA Reports" />
+
+      <div class="content">
+        <!-- Warning Banner -->
+        <div v-if="projectsWithoutExport.length > 0" class="warning-banner">
+          <i class="pi pi-info-circle"></i>
+          <span>{{ projectsWithoutExport.length }} {{ projectsWithoutExport.length === 1 ? 'projeto não exportado' : 'projetos não exportados' }}</span>
+        </div>
+
+        <div v-if="sortedProjects.length === 0" class="empty-state">
+          <i class="pi pi-inbox"></i>
+          <h2>{{ t('home.empty_title') }}</h2>
+          <p>{{ t('home.empty_message') }}</p>
+          <Button
+            :label="t('home.new_project')"
+            icon="pi pi-plus"
+            @click="showCreateForm = true"
+          />
+        </div>
+
+        <div v-else class="projects-list">
+          <div
+            v-for="project in sortedProjects"
+            :key="project.id"
+            class="project-item"
+            @click="selectProject(project.id)"
+          >
+            <div class="project-item-left">
+              <div class="project-icon" :class="isProjectExported(project.id) ? 'exported' : 'pending'">
+                <i :class="isProjectExported(project.id) ? 'pi pi-check' : 'pi pi-folder'"></i>
+              </div>
+              <div class="project-info">
+                <h3>{{ project.name }}</h3>
+                <span class="project-meta">
+                  <i class="pi pi-map"></i>
+                  {{ getMapInfo(project.mapId)?.name }}
+                </span>
+                <span class="project-date">{{ formatDate(project.createdAt) }}</span>
+              </div>
+            </div>
+            <div class="project-item-right">
+              <Button
+                icon="pi pi-trash"
+                text
+                severity="danger"
+                size="small"
+                class="delete-btn"
+                @click.stop="deleteProject(project.id)"
+              />
+              <i class="pi pi-chevron-right chevron"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAB para criar projeto -->
+      <button
+        v-if="sortedProjects.length > 0"
+        class="fab"
+        @click="showCreateForm = true"
+      >
+        <i class="pi pi-plus"></i>
+      </button>
+    </template>
   </div>
-
-  <Dialog
-    v-model:visible="showCreateDialog"
-    :header="t('home.create_project')"
-    :modal="true"
-  >
-    <div class="create-form">
-      <div class="form-group">
-        <label>{{ t('home.project_name') }}</label>
-        <InputText
-          v-model="newProjectName"
-          :placeholder="`Ex: ${t('home.project_name')}`"
-        />
-      </div>
-
-      <div class="form-group">
-        <label>{{ t('home.map_selection') }}</label>
-        <Dropdown
-          v-model="newProjectMapId"
-          :options="mapOptions"
-          option-label="label"
-          option-value="value"
-        />
-      </div>
-
-      <div style="margin-top: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-        <Button
-          :label="t('home.cancel')"
-          severity="secondary"
-          @click="showCreateDialog = false"
-        />
-        <Button
-          :label="t('home.create')"
-          @click="handleCreateProject"
-          :loading="isCreating"
-        />
-      </div>
-    </div>
-  </Dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../../../components/ui/PageHeader.vue'
 import Button from 'primevue/button'
-import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import { useProjects } from '../../../composables/useProjects'
 import { useI18nStore, translations } from '../../../stores/i18n'
-import { useProjectsStore } from '../../../stores/projects'
 import { MAPS } from '../../../core/database/schemas/project.schema'
 
 const router = useRouter()
 const i18nStore = useI18nStore()
-const projectsStore = useProjectsStore()
 const { sortedProjects, isCreating, createNewProject, deleteProjectItem, getMapInfo } = useProjects()
 
-// Force load projects on mount
-onMounted(async () => {
-  await projectsStore.loadProjects()
-})
-
-// Recarregar projetos quando houver mudanças no store
-watch(() => projectsStore.projects, () => {}, { deep: true })
-
-const showCreateDialog = ref(false)
+const showCreateForm = ref(false)
 const newProjectName = ref('')
 const newProjectMapId = ref('inspection-t24')
 const projectsWithoutExport = computed(() => {
-  return sortedProjects.filter((p: any) => {
+  return sortedProjects.value.filter((p: any) => {
     const exported = localStorage.getItem(`project-exported-${p.id}`)
     return !exported
   })
@@ -168,9 +176,11 @@ const handleCreateProject = async () => {
 
   const project = await createNewProject(newProjectName.value, newProjectMapId.value)
   if (project) {
-    showCreateDialog.value = false
+    showCreateForm.value = false
     newProjectName.value = ''
     newProjectMapId.value = 'inspection-t24'
+    // Navegar direto para o projeto criado
+    router.push(`/project/${project.id}`)
   }
 }
 
@@ -203,34 +213,36 @@ const formatDate = (dateString: string) => {
   flex-direction: column;
   height: 100vh;
   background: var(--p-surface-0);
+  position: relative;
 }
 
+/* ========= Lista de projetos ========= */
 .content {
   flex: 1;
-  padding: 1rem;
+  padding: 0.75rem;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
 .warning-banner {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, #fff3cd, #ffe8a1);
-  border-left: 4px solid #ff9800;
-  border-radius: 8px;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff8e1;
+  border-left: 3px solid #ff9800;
+  border-radius: 6px;
   color: #856404;
-  font-size: 0.9rem;
-  animation: slideDown 0.3s ease;
+  font-size: 0.8rem;
 }
 
 .warning-banner i {
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   color: #ff9800;
+  flex-shrink: 0;
 }
 
 .empty-state {
@@ -240,284 +252,267 @@ const formatDate = (dateString: string) => {
   justify-content: center;
   height: 100%;
   color: var(--p-text-color);
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  padding: 2rem 1rem;
 }
 
 .empty-state i {
-  font-size: 3.5rem;
+  font-size: 3rem;
   color: var(--p-primary-color);
   margin-bottom: 1rem;
-  animation: bounce 2s infinite;
-}
-
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
+  opacity: 0.7;
 }
 
 .empty-state h2 {
-  margin: 1rem 0;
-  font-size: 1.25rem;
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
 }
 
 .empty-state p {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   color: var(--p-text-color-secondary);
   text-align: center;
-  max-width: 280px;
-  font-size: 0.9rem;
+  max-width: 260px;
+  font-size: 0.85rem;
 }
 
-.projects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 0.75rem;
-  padding-bottom: 1rem;
-}
-
-.project-card,
-.add-project-card {
-  background: var(--p-surface-50);
-  border: 1px solid var(--p-surface-200);
-  border-radius: 12px;
-  padding: 1.25rem;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: slideIn 0.3s ease;
-  position: relative;
-  overflow: hidden;
+/* Lista de projetos tipo lista (melhor para mobile) */
+.projects-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.project-card:hover,
-.add-project-card:hover {
-  border-color: var(--p-primary-color);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-}
-
-.card-status {
-  display: flex;
   gap: 0.5rem;
-  flex-wrap: wrap;
-  min-height: 20px;
+  padding-bottom: 4rem; /* espaço para FAB */
 }
 
-.exported-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.8rem;
-  background: var(--p-success-50);
-  color: var(--p-success-700);
-  border-radius: 20px;
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
-.exported-badge i {
-  font-size: 0.75rem;
-}
-
-.pending-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.8rem;
-  background: #fff3cd;
-  color: #856404;
-  border-radius: 20px;
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
-.pending-badge i {
-  font-size: 0.75rem;
-}
-
-.card-header {
+.project-item {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--p-surface-50);
+  border: 1px solid var(--p-surface-200);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.card-header h3 {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--p-text-color);
-  word-break: break-word;
-  font-weight: 700;
+.project-item:active {
+  background: var(--p-surface-100);
+  transform: scale(0.98);
+}
+
+.project-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
   flex: 1;
 }
 
-.card-header button {
-  flex-shrink: 0;
-  opacity: 0.6;
-  transition: opacity 0.3s ease;
-}
-
-.card-header button:hover {
-  opacity: 1;
-}
-
-.card-info {
+.project-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.map-name {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--p-primary-color);
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.map-name i {
-  font-size: 0.75rem;
-}
-
-.date {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--p-text-color-secondary);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.date i {
-  font-size: 0.75rem;
-}
-
-.card-footer {
-  margin-top: 0.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--p-surface-200);
-  display: flex;
-  justify-content: flex-end;
-  color: var(--p-primary-color);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.project-card:hover .card-footer {
-  opacity: 1;
-}
-
-.add-project-card {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  min-height: 120px;
-  border-style: dashed;
+  flex-shrink: 0;
+}
+
+.project-icon.exported {
+  background: var(--p-green-50, #ecfdf5);
+  color: var(--p-green-600, #16a34a);
+}
+
+.project-icon.pending {
+  background: var(--p-primary-50);
+  color: var(--p-primary-color);
+}
+
+.project-icon i {
+  font-size: 1rem;
+}
+
+.project-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.project-info h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--p-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-meta {
+  font-size: 0.75rem;
+  color: var(--p-primary-color);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.project-meta i {
+  font-size: 0.65rem;
+}
+
+.project-date {
+  font-size: 0.7rem;
+  color: var(--p-text-color-secondary);
+}
+
+.project-item-right {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.delete-btn {
+  opacity: 0.5;
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.chevron {
+  font-size: 0.75rem;
+  color: var(--p-text-color-secondary);
+  opacity: 0.5;
+}
+
+/* FAB */
+.fab {
+  position: fixed;
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 12px);
+  right: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: none;
+  background: var(--p-primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 50;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fab:active {
+  transform: scale(0.9);
+}
+
+.fab i {
+  font-size: 1.25rem;
+}
+
+/* ========= Formulário full-screen ========= */
+.create-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   background: var(--p-surface-0);
 }
 
-.add-project-card i {
-  font-size: 1.75rem;
-  color: var(--p-primary-color);
-  transition: transform 0.3s ease;
+.create-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--p-surface-200);
 }
 
-.add-project-card:hover i {
-  transform: scale(1.1) rotate(90deg);
-}
-
-.add-project-card p {
+.create-page-header h2 {
   margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.create-page-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1.25rem;
+  gap: 1.5rem;
+  overflow-y: auto;
+}
+
+.create-illustration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.create-illustration i {
+  font-size: 3.5rem;
   color: var(--p-primary-color);
+  opacity: 0.7;
+}
+
+.create-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-field label {
   font-weight: 500;
+  color: var(--p-text-color);
   font-size: 0.85rem;
 }
 
-.create-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  max-width: 100%;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-weight: 500;
-  color: var(--p-text-color);
-  font-size: 0.9rem;
-}
-
-:deep(.p-dialog) {
-  width: 90vw !important;
-  max-width: 500px !important;
-}
-
-:deep(.p-dialog-content) {
-  padding: 1.5rem !important;
-}
-
-:deep(.p-inputtext) {
+:deep(.form-input) {
   width: 100% !important;
   font-size: 16px !important;
 }
 
-:deep(.p-dropdown) {
-  width: 100% !important;
+:deep(.form-input .p-inputtext) {
+  font-size: 16px !important;
 }
 
-@media (max-width: 600px) {
-  .content {
-    padding: 0.75rem;
-  }
+.create-form-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+}
 
-  .projects-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 0.5rem;
-  }
+.create-submit-btn {
+  width: 100%;
+  height: 48px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+}
 
-  .empty-state i {
-    font-size: 3rem;
-  }
+.create-cancel-btn {
+  width: 100%;
+  height: 40px;
+  font-size: 0.9rem;
+}
 
-  .empty-state h2 {
-    font-size: 1.1rem;
+@media (min-width: 992px) {
+  .fab {
+    bottom: 24px;
+    right: 24px;
   }
 }
 </style>

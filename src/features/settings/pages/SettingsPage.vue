@@ -37,20 +37,20 @@
               <Button
                 :label="t('settings.light')"
                 :severity="isDarkMode ? 'secondary' : 'primary'"
-                @click="setTheme('light')"
                 :icon="isDarkMode ? '' : 'pi pi-check'"
+                @click="setTheme('light')"
               />
               <Button
                 :label="t('settings.dark')"
                 :severity="isDarkMode ? 'primary' : 'secondary'"
-                @click="setTheme('dark')"
                 :icon="isDarkMode ? 'pi pi-check' : ''"
+                @click="setTheme('dark')"
               />
               <Button
                 :label="t('settings.auto')"
                 :severity="themeMode === 'auto' ? 'primary' : 'secondary'"
-                @click="setTheme('auto')"
                 :icon="themeMode === 'auto' ? 'pi pi-check' : ''"
+                @click="setTheme('auto')"
               />
             </div>
             <p class="hint">{{ t('settings.themeHint') }}</p>
@@ -82,8 +82,8 @@
               :label="t('settings.clearCache')"
               severity="danger"
               icon="pi pi-trash"
-              @click="clearCache"
               class="clear-btn"
+              @click="clearCache"
             />
           </div>
         </template>

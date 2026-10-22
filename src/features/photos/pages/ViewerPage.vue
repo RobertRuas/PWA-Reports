@@ -2,17 +2,20 @@
   <div class="viewer-page">
     <div v-if="photo" class="viewer-content">
       <img :src="photoUrl" :alt="photo.filename" class="photo-image" />
-      <div class="photo-info">
-        <p><strong>{{ photo.filename }}</strong></p>
-        <p>{{ photo.folder }}</p>
-        <p class="date">{{ formatDate(photo.createdAt) }}</p>
-      </div>
+    </div>
+
+    <div v-if="photo" class="viewer-info-bar">
+      <span class="filename">{{ photo.filename }}</span>
+      <span class="folder-tag">{{ photo.folder }}</span>
     </div>
 
     <div class="viewer-controls">
       <Button
         icon="pi pi-arrow-left"
         text
+        size="small"
+        label="Voltar"
+        class="ctrl-btn"
         @click="goBack"
       />
       <Button
@@ -20,12 +23,9 @@
         icon="pi pi-trash"
         text
         severity="danger"
+        size="small"
+        class="ctrl-btn"
         @click="deletePhoto"
-      />
-      <Button
-        icon="pi pi-arrow-right"
-        text
-        @click="goBack"
       />
     </div>
   </div>
@@ -50,22 +50,17 @@ onMounted(async () => {
   projectId.value = route.params.projectId as string
   const photoId = route.params.photoId as string
 
+  // Se fotos não carregadas, carregar
+  if (photoStore.projectPhotos.length === 0) {
+    await photoStore.loadPhotos(projectId.value)
+  }
+
   const p = photoStore.projectPhotos.find(pp => pp.id === photoId)
   if (p) {
     photo.value = p
     photoUrl.value = URL.createObjectURL(p.data)
   }
 })
-
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 const deletePhoto = async () => {
   if (photo.value && confirm('Tem certeza que deseja deletar esta foto?')) {
@@ -75,7 +70,7 @@ const deletePhoto = async () => {
 }
 
 const goBack = () => {
-  router.push(`/project/${projectId.value}/review`)
+  router.back()
 }
 </script>
 
@@ -84,57 +79,60 @@ const goBack = () => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: var(--p-surface-900);
+  background: #000;
 }
 
 .viewer-content {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .photo-image {
-  max-width: 90vw;
-  max-height: 80vh;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
-  border-radius: var(--p-border-radius);
 }
 
-.photo-info {
-  margin-top: 1rem;
-  text-align: center;
-  color: var(--p-surface-0);
+.viewer-info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.85);
 }
 
-.photo-info p {
-  margin: 0.25rem 0;
+.filename {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.photo-info strong {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-size: 1.1rem;
-}
-
-.date {
-  font-size: 0.8rem;
-  opacity: 0.7;
+.folder-tag {
+  background: var(--p-primary-color);
+  color: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 
 .viewer-controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  background: var(--p-surface-800);
-  border-top: 1px solid var(--p-surface-700);
+  padding: 0.5rem 0.75rem;
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  background: rgba(0, 0, 0, 0.9);
 }
 
-:deep(.p-button) {
-  color: var(--p-surface-0);
+:deep(.ctrl-btn) {
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 0.8rem !important;
 }
 </style>

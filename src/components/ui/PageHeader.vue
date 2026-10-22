@@ -46,28 +46,28 @@ withDefaults(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1.5rem;
-  gap: 1rem;
+  padding: 0.75rem 1rem;
+  gap: 0.75rem;
 }
 
 .page-header-left {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   min-width: 0;
 }
 
 .page-header-title {
-  font-size: 1.5rem;
+  font-size: 1.15rem;
   font-weight: 700;
   margin: 0;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
 .page-header-subtitle {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: var(--p-text-muted-color);
-  margin: 0.125rem 0 0;
+  margin: 0.1rem 0 0;
 }
 
 .page-header-actions {
@@ -75,15 +75,5 @@ withDefaults(
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
-}
-
-@media (max-width: 640px) {
-  .page-header {
-    padding: 1rem;
-  }
-
-  .page-header-title {
-    font-size: 1.25rem;
-  }
 }
 </style>

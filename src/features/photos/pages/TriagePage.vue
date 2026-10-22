@@ -1,10 +1,17 @@
 <template>
   <div class="triage-page">
-    <PageHeader title="Triagem" subtitle="Organize fotos" />
+    <PageHeader title="Triagem" subtitle="Carregue fotos" />
 
     <div class="content">
       <!-- Upload Area -->
-      <div class="upload-area" @dragover.prevent @drop="handleDrop" :class="{ 'drag-active': isDragging }">
+      <div
+        class="upload-area"
+        :class="{ 'drag-active': isDragging }"
+        @click="fileInput?.click()"
+        @dragover.prevent="isDragging = true"
+        @dragleave="isDragging = false"
+        @drop.prevent="handleDrop"
+      >
         <input
           ref="fileInput"
           type="file"
@@ -12,42 +19,49 @@
           accept="image/*"
           hidden
           @change="handleFileSelect"
-          @dragenter="isDragging = true"
-          @dragleave="isDragging = false"
         />
         <i class="pi pi-cloud-upload upload-icon"></i>
-        <p>Arraste fotos aqui ou clique para selecionar</p>
-        <Button label="Selecionar Fotos" @click="fileInput?.click()" />
+        <p>Toque para selecionar fotos</p>
+        <span class="upload-hint">ou arraste aqui</span>
+      </div>
+
+      <!-- Upload progress overlay -->
+      <div v-if="isUploading" class="upload-progress">
+        <div class="progress-card">
+          <div class="progress-spinner">
+            <i class="pi pi-spin pi-spinner"></i>
+          </div>
+          <p class="progress-text">Carregando fotos...</p>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" :style="{ width: uploadProgress + '%' }"></div>
+          </div>
+          <span class="progress-count">{{ uploadedCount }} de {{ totalUploadCount }}</span>
+        </div>
       </div>
 
       <!-- Photos Grid -->
-      <div v-if="projectPhotos.length > 0" class="photos-container">
+      <div v-if="allPhotos.length > 0" class="photos-container">
         <div class="grid-header">
-          <h3>{{ projectPhotos.length }} foto(s) carregada(s)</h3>
+          <span class="photo-count">{{ allPhotos.length }} foto(s)</span>
         </div>
         <div class="photos-grid">
           <div
-            v-for="photo in projectPhotos"
+            v-for="photo in allPhotos"
             :key="photo.id"
-            class="photo-card"
+            class="photo-thumb"
             @click="viewPhoto(photo)"
           >
-            <div class="photo-wrapper">
-              <img :src="getPhotoUrl(photo)" :alt="photo.filename" loading="lazy" />
-              <div class="photo-overlay">
-                <i class="pi pi-eye"></i>
-              </div>
-            </div>
-            <p class="folder-label">{{ photo.folder }}</p>
+            <img :src="getPhotoUrl(photo)" :alt="photo.filename" loading="lazy" />
+            <span class="thumb-folder">{{ photo.folder }}</span>
           </div>
         </div>
       </div>
 
       <!-- Empty State -->
-      <div v-else class="empty-state">
-        <i class="pi pi-inbox empty-icon"></i>
+      <div v-else-if="!isUploading" class="empty-state">
+        <i class="pi pi-camera"></i>
         <p>Nenhuma foto ainda</p>
-        <span class="hint">Comece carregando suas fotos acima</span>
+        <span>Toque acima para carregar</span>
       </div>
     </div>
 
@@ -57,12 +71,14 @@
         icon="pi pi-arrow-left"
         label="Voltar"
         severity="secondary"
+        size="small"
         @click="goBack"
       />
       <Button
         icon="pi pi-arrow-right"
         label="Revisar"
-        :disabled="projectPhotos.length === 0"
+        size="small"
+        :disabled="allPhotos.length === 0"
         @click="goToReview"
       />
     </div>
@@ -70,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import PageHeader from '../../../components/ui/PageHeader.vue'
 import Button from 'primevue/button'
@@ -84,7 +100,12 @@ const photoStore = usePhotosStore()
 const fileInput = ref<HTMLInputElement>()
 const projectId = ref<string>('')
 const isDragging = ref(false)
-const { projectPhotos } = photoStore
+const isUploading = ref(false)
+const uploadProgress = ref(0)
+const uploadedCount = ref(0)
+const totalUploadCount = ref(0)
+
+const allPhotos = computed(() => photoStore.projectPhotos)
 
 onMounted(async () => {
   projectId.value = route.params.projectId as string
@@ -93,12 +114,8 @@ onMounted(async () => {
 
 const handleFileSelect = async (event: Event) => {
   const files = (event.target as HTMLInputElement).files
-  if (!files) return
-
-  for (const file of files) {
-    await photoStore.addPhoto(projectId.value, 'Inbox', file)
-  }
-  // Reset input
+  if (!files || files.length === 0) return
+  await uploadFiles(Array.from(files))
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -108,11 +125,27 @@ const handleDrop = async (event: DragEvent) => {
   isDragging.value = false
   const files = event.dataTransfer?.files
   if (!files) return
-
   const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'))
-  for (const file of imageFiles) {
-    await photoStore.addPhoto(projectId.value, 'Inbox', file)
+  if (imageFiles.length > 0) {
+    await uploadFiles(imageFiles)
   }
+}
+
+const uploadFiles = async (files: File[]) => {
+  isUploading.value = true
+  uploadedCount.value = 0
+  totalUploadCount.value = files.length
+  uploadProgress.value = 0
+
+  for (const file of files) {
+    await photoStore.addPhoto(projectId.value, 'Inbox', file)
+    uploadedCount.value++
+    uploadProgress.value = Math.round((uploadedCount.value / totalUploadCount.value) * 100)
+  }
+
+  // Pequeno delay para o usuário ver 100%
+  await new Promise(resolve => setTimeout(resolve, 400))
+  isUploading.value = false
 }
 
 const getPhotoUrl = (photo: Photo) => {
@@ -141,245 +174,224 @@ const goToReview = () => {
 
 .content {
   flex: 1;
-  padding: 1rem;
+  padding: 0.75rem;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
+  position: relative;
 }
 
+/* ========= Upload area ========= */
 .upload-area {
-  border: 2px dashed var(--p-primary-color);
+  border: 2px dashed var(--p-primary-300);
   border-radius: 12px;
-  padding: 2.5rem 1.5rem;
+  padding: 1.5rem 1rem;
   text-align: center;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   background: var(--p-surface-50);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.upload-area:hover,
+.upload-area:active,
 .upload-area.drag-active {
   background: var(--p-primary-50);
-  border-color: var(--p-primary-600);
-  transform: scale(1.01);
+  border-color: var(--p-primary-color);
+  transform: scale(0.98);
 }
 
 .upload-icon {
-  font-size: 2.5rem;
+  font-size: 2rem;
   color: var(--p-primary-color);
   display: block;
-  margin-bottom: 0.75rem;
-  transition: transform 0.3s ease;
-  animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-.upload-area:hover .upload-icon {
-  transform: scale(1.1);
+  margin-bottom: 0.5rem;
 }
 
 .upload-area p {
-  margin: 0.5rem 0 1.25rem;
-  color: var(--p-text-color);
-  font-size: 0.95rem;
-}
-
-.photos-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.grid-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.grid-header h3 {
   margin: 0;
   color: var(--p-text-color);
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
-.photos-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 0.75rem;
-  flex: 1;
+.upload-hint {
+  font-size: 0.75rem;
+  color: var(--p-text-color-secondary);
 }
 
-.photo-card {
-  position: relative;
-  cursor: pointer;
-  border-radius: 8px;
-  overflow: hidden;
-  aspect-ratio: 1;
-  background: var(--p-surface-100);
-  transition: all 0.3s ease;
-  animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.photo-wrapper {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-}
-
-.photo-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.photo-overlay {
-  position: absolute;
+/* ========= Upload progress ========= */
+.upload-progress {
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0);
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 500;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
+  animation: fadeIn 0.2s ease;
+  backdrop-filter: blur(4px);
 }
 
-.photo-overlay i {
-  color: white;
-  font-size: 1.5rem;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: all 0.3s ease;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.photo-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform: scale(1.02);
+.progress-card {
+  background: var(--p-surface-0);
+  border-radius: 16px;
+  padding: 1.75rem 1.5rem;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  animation: scaleIn 0.25s ease;
 }
 
-.photo-card:hover img {
-  transform: scale(1.08);
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-.photo-card:hover .photo-overlay {
-  background: rgba(0, 0, 0, 0.4);
+.progress-spinner i {
+  font-size: 2rem;
+  color: var(--p-primary-color);
 }
 
-.photo-card:hover .photo-overlay i {
-  opacity: 1;
-  transform: scale(1);
+.progress-text {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--p-text-color);
 }
 
-.folder-label {
+.progress-bar-track {
+  width: 100%;
+  height: 6px;
+  background: var(--p-surface-200);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--p-primary-color);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progress-count {
+  font-size: 0.75rem;
+  color: var(--p-text-color-secondary);
+}
+
+/* ========= Photos grid ========= */
+.photos-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.grid-header {
+  display: flex;
+  align-items: center;
+}
+
+.photo-count {
+  font-size: 0.8rem;
+  color: var(--p-text-color-secondary);
+  font-weight: 500;
+}
+
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.photo-thumb {
+  position: relative;
+  cursor: pointer;
+  border-radius: 6px;
+  overflow: hidden;
+  aspect-ratio: 1;
+  background: var(--p-surface-100);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.photo-thumb:active {
+  transform: scale(0.95);
+}
+
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb-folder {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  margin: 0;
-  padding: 0.4rem;
-  background: rgba(0, 0, 0, 0.7);
+  padding: 0.2rem;
+  background: rgba(0, 0, 0, 0.65);
   color: white;
-  font-size: 0.75rem;
+  font-size: 0.6rem;
   font-weight: 500;
   text-align: center;
 }
 
+/* ========= Empty state ========= */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   flex: 1;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.empty-state i {
+  font-size: 2.5rem;
   color: var(--p-text-color-secondary);
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.empty-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  color: var(--p-primary-color);
-  opacity: 0.6;
+  opacity: 0.4;
+  margin-bottom: 0.75rem;
 }
 
 .empty-state p {
-  margin: 0;
-  font-size: 1rem;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.25rem;
+  font-size: 0.9rem;
+  color: var(--p-text-color);
 }
 
-.empty-state .hint {
-  font-size: 0.85rem;
+.empty-state span {
+  font-size: 0.8rem;
   color: var(--p-text-color-secondary);
 }
 
+/* ========= Nav buttons ========= */
 .nav-buttons {
   display: flex;
-  gap: 0.75rem;
-  padding: 1rem;
+  gap: 0.5rem;
+  padding: 0.75rem;
   border-top: 1px solid var(--p-surface-200);
   background: var(--p-surface-0);
 }
 
 .nav-buttons button {
   flex: 1;
-  height: 44px;
-  font-size: 0.9rem;
-}
-
-@media (max-width: 600px) {
-  .content {
-    padding: 0.75rem;
-    gap: 0.75rem;
-  }
-
-  .upload-area {
-    padding: 2rem 1rem;
-  }
-
-  .photos-grid {
-    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
-    gap: 0.5rem;
-  }
-
-  .upload-icon {
-    font-size: 2rem;
-  }
+  height: 40px;
+  font-size: 0.85rem;
 }
 </style>
