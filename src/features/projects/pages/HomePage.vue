@@ -3,6 +3,12 @@
     <PageHeader :title="t('home.title')" subtitle="PWA Reports" />
 
     <div class="content">
+      <!-- Warning Banner -->
+      <div v-if="projectsWithoutExport.length > 0" class="warning-banner">
+        <i class="pi pi-info-circle"></i>
+        <span>{{ projectsWithoutExport.length }} {{ projectsWithoutExport.length === 1 ? 'projeto não exportado' : 'projetos não exportados' }}. Exporte antes de deletar.</span>
+      </div>
+
       <div v-if="sortedProjects.length === 0" class="empty-state">
         <i class="pi pi-inbox"></i>
         <h2>{{ t('home.empty_title') }}</h2>
@@ -21,6 +27,15 @@
           class="project-card"
           @click="selectProject(project.id)"
         >
+          <div class="card-status">
+            <div v-if="isProjectExported(project.id)" class="exported-badge">
+              <i class="pi pi-check"></i> Exportado
+            </div>
+            <div v-else class="pending-badge">
+              <i class="pi pi-exclamation-circle"></i> Não exportado
+            </div>
+          </div>
+
           <div class="card-header">
             <h3>{{ project.name }}</h3>
             <Button
@@ -31,8 +46,21 @@
               @click.stop="deleteProject(project.id)"
             />
           </div>
-          <p class="map-name">{{ getMapInfo(project.mapId)?.name }}</p>
-          <p class="date">{{ formatDate(project.createdAt) }}</p>
+
+          <div class="card-info">
+            <p class="map-name">
+              <i class="pi pi-map"></i>
+              {{ getMapInfo(project.mapId)?.name }}
+            </p>
+            <p class="date">
+              <i class="pi pi-calendar"></i>
+              {{ formatDate(project.createdAt) }}
+            </p>
+          </div>
+
+          <div class="card-footer">
+            <i class="pi pi-arrow-right"></i>
+          </div>
         </div>
 
         <div class="add-project-card" @click="showCreateDialog = true">
@@ -84,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../../../components/ui/PageHeader.vue'
 import Button from 'primevue/button'
@@ -101,12 +129,23 @@ const i18nStore = useI18nStore()
 const projectsStore = useProjectsStore()
 const { sortedProjects, isCreating, createNewProject, deleteProjectItem, getMapInfo } = useProjects()
 
+// Force load projects on mount
+onMounted(async () => {
+  await projectsStore.loadProjects()
+})
+
 // Recarregar projetos quando houver mudanças no store
 watch(() => projectsStore.projects, () => {}, { deep: true })
 
 const showCreateDialog = ref(false)
 const newProjectName = ref('')
 const newProjectMapId = ref('inspection-t24')
+const projectsWithoutExport = computed(() => {
+  return sortedProjects.filter((p: any) => {
+    const exported = localStorage.getItem(`project-exported-${p.id}`)
+    return !exported
+  })
+})
 
 const t = (key: string) => {
   const keys = key.split('.')
@@ -145,6 +184,10 @@ const deleteProject = async (projectId: string) => {
   }
 }
 
+const isProjectExported = (projectId: string) => {
+  return localStorage.getItem(`project-exported-${projectId}`) === 'true'
+}
+
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -167,6 +210,27 @@ const formatDate = (dateString: string) => {
   padding: 1rem;
   overflow-y: auto;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.warning-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #fff3cd, #ffe8a1);
+  border-left: 4px solid #ff9800;
+  border-radius: 8px;
+  color: #856404;
+  font-size: 0.9rem;
+  animation: slideDown 0.3s ease;
+}
+
+.warning-banner i {
+  font-size: 1.1rem;
+  color: #ff9800;
 }
 
 .empty-state {
@@ -230,11 +294,16 @@ const formatDate = (dateString: string) => {
 .add-project-card {
   background: var(--p-surface-50);
   border: 1px solid var(--p-surface-200);
-  border-radius: 8px;
-  padding: 1rem;
+  border-radius: 12px;
+  padding: 1.25rem;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   animation: slideIn 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 @keyframes slideIn {
@@ -251,41 +320,121 @@ const formatDate = (dateString: string) => {
 .project-card:hover,
 .add-project-card:hover {
   border-color: var(--p-primary-color);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+}
+
+.card-status {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  min-height: 20px;
+}
+
+.exported-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.8rem;
+  background: var(--p-success-50);
+  color: var(--p-success-700);
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.exported-badge i {
+  font-size: 0.75rem;
+}
+
+.pending-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.8rem;
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.pending-badge i {
+  font-size: 0.75rem;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.5rem;
   gap: 0.5rem;
 }
 
 .card-header h3 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--p-text-color);
   word-break: break-word;
-  font-weight: 600;
+  font-weight: 700;
+  flex: 1;
 }
 
 .card-header button {
   flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.card-header button:hover {
+  opacity: 1;
+}
+
+.card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .map-name {
-  margin: 0.5rem 0 0;
-  font-size: 0.8rem;
+  margin: 0;
+  font-size: 0.85rem;
   color: var(--p-primary-color);
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.map-name i {
+  font-size: 0.75rem;
 }
 
 .date {
-  margin: 0.25rem 0 0;
-  font-size: 0.75rem;
+  margin: 0;
+  font-size: 0.8rem;
   color: var(--p-text-color-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.date i {
+  font-size: 0.75rem;
+}
+
+.card-footer {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--p-surface-200);
+  display: flex;
+  justify-content: flex-end;
+  color: var(--p-primary-color);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.project-card:hover .card-footer {
+  opacity: 1;
 }
 
 .add-project-card {
