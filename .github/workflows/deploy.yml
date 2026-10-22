@@ -5,29 +5,61 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pages: write
-  id-token: write
-
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      - run: npm run build
+      - name: Build
+        run: npm run build
+
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages-dir
+        continue-on-error: true
+
+      - name: Create gh-pages branch if it doesn't exist
+        run: |
+          cd /tmp
+          git clone --depth 1 https://github.com/RobertRuas/PWA-Reports.git temp-repo
+          cd temp-repo
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git checkout --orphan gh-pages || git checkout gh-pages
+          rm -rf *
+          touch .gitkeep
+          git add .
+          git commit -m "Init gh-pages" || true
+          git push origin gh-pages || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          cname: robertruas.github.io
+        run: |
+          cd /tmp
+          git clone --depth 1 --branch gh-pages https://github.com/RobertRuas/PWA-Reports.git deploy-repo
+          cd deploy-repo
+          rm -rf *
+          cp -r ${{ github.workspace }}/dist/* .
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git add .
+          git commit -m "Deploy: ${{ github.sha }}" || true
+          git push origin gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
