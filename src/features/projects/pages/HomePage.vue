@@ -63,8 +63,6 @@
 
     <!-- Página principal -->
     <template v-else>
-      <PageHeader :title="t('home.title')" subtitle="PWA Reports" />
-
       <div class="content">
         <!-- Warning Banner -->
         <div v-if="projectsWithoutExport.length > 0" class="warning-banner">
@@ -118,14 +116,37 @@
         </div>
       </div>
 
-      <!-- FAB para criar projeto -->
-      <button
-        v-if="sortedProjects.length > 0"
-        class="fab"
-        @click="showCreateForm = true"
-      >
-        <i class="pi pi-plus"></i>
-      </button>
+      <!-- FAB com menu de opções -->
+      <div v-if="sortedProjects.length > 0" class="fab-container">
+        <!-- Menu do FAB -->
+        <div v-if="showFabMenu" class="fab-menu-backdrop" @click="showFabMenu = false"></div>
+        <div v-if="showFabMenu" class="fab-menu">
+          <button class="fab-menu-item" @click="handleCreateNew">
+            <i class="pi pi-plus"></i>
+            <span>Criar novo projeto</span>
+          </button>
+          <button class="fab-menu-item" @click="handleImportZip">
+            <i class="pi pi-file-import"></i>
+            <span>Importar ZIP</span>
+          </button>
+        </div>
+        <button
+          class="fab"
+          :class="{ active: showFabMenu }"
+          @click="showFabMenu = !showFabMenu"
+        >
+          <i class="pi pi-plus" :class="{ rotated: showFabMenu }"></i>
+        </button>
+      </div>
+
+      <!-- Input oculto para importar ZIP -->
+      <input
+        ref="zipInput"
+        type="file"
+        accept=".zip"
+        hidden
+        @change="handleZipImport"
+      />
     </template>
   </div>
 </template>
@@ -133,21 +154,25 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import PageHeader from '../../../components/ui/PageHeader.vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import { useProjects } from '../../../composables/useProjects'
 import { useI18nStore, translations } from '../../../stores/i18n'
+import { usePhotosStore } from '../../../stores/photos'
 import { MAPS } from '../../../core/database/schemas/project.schema'
 
 const router = useRouter()
 const i18nStore = useI18nStore()
+const photoStore = usePhotosStore()
 const { sortedProjects, isCreating, createNewProject, deleteProjectItem, getMapInfo } = useProjects()
 
 const showCreateForm = ref(false)
+const showFabMenu = ref(false)
 const newProjectName = ref('')
 const newProjectMapId = ref('inspection-t24')
+const zipInput = ref<HTMLInputElement>()
+
 const projectsWithoutExport = computed(() => {
   return sortedProjects.value.filter((p: any) => {
     const exported = localStorage.getItem(`project-exported-${p.id}`)
@@ -171,6 +196,72 @@ const mapOptions = computed(() =>
   }))
 )
 
+const handleCreateNew = () => {
+  showFabMenu.value = false
+  showCreateForm.value = true
+}
+
+const handleImportZip = () => {
+  showFabMenu.value = false
+  zipInput.value?.click()
+}
+
+const handleZipImport = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+
+  try {
+    const JSZip = (await import('jszip')).default
+    const zip = await JSZip.loadAsync(file)
+
+    // Ler fastreport.json para obter metadata
+    const metadataFile = zip.file('fastreport.json')
+    let projectName = file.name.replace('.zip', '')
+    let mapId = 'inspection-t24'
+
+    if (metadataFile) {
+      const metadata = JSON.parse(await metadataFile.async('string'))
+      projectName = metadata.displayName || projectName
+      mapId = metadata.mapId || mapId
+    }
+
+    // Criar projeto
+    const project = await createNewProject(projectName, mapId)
+    if (!project) {
+      alert('Erro ao criar projeto')
+      return
+    }
+
+    // Importar fotos de cada pasta
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp']
+
+    for (const [path, zipEntry] of Object.entries(zip.files)) {
+      if (zipEntry.dir) continue
+
+      const ext = '.' + path.split('.').pop()?.toLowerCase()
+      if (!imageExtensions.includes(ext)) continue
+
+      const parts = path.split('/')
+      const folder = parts.length >= 2 ? parts[0] : 'Inbox'
+      const blob = await zipEntry.async('blob')
+      const photoFile = new File([blob], parts[parts.length - 1], { type: 'image/jpeg' })
+
+      await photoStore.addPhoto(project.id, folder, photoFile, projectName)
+    }
+
+    // Navegar para o projeto importado
+    router.push(`/project/${project.id}`)
+  } catch (err) {
+    console.error('Erro ao importar ZIP:', err)
+    alert('Erro ao importar o ficheiro ZIP')
+  }
+
+  // Limpar input
+  if (zipInput.value) {
+    zipInput.value.value = ''
+  }
+}
+
 const handleCreateProject = async () => {
   if (!newProjectName.value.trim()) return
 
@@ -179,7 +270,6 @@ const handleCreateProject = async () => {
     showCreateForm.value = false
     newProjectName.value = ''
     newProjectMapId.value = 'inspection-t24'
-    // Navegar direto para o projeto criado
     router.push(`/project/${project.id}`)
   }
 }
@@ -211,9 +301,10 @@ const formatDate = (dateString: string) => {
 .home-page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100%;
   background: var(--p-surface-0);
   position: relative;
+  overscroll-behavior: none;
 }
 
 /* ========= Lista de projetos ========= */
@@ -225,6 +316,7 @@ const formatDate = (dateString: string) => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  overscroll-behavior: none;
 }
 
 .warning-banner {
@@ -275,12 +367,11 @@ const formatDate = (dateString: string) => {
   font-size: 0.85rem;
 }
 
-/* Lista de projetos tipo lista (melhor para mobile) */
 .projects-list {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding-bottom: 4rem; /* espaço para FAB */
+  padding-bottom: 5rem;
 }
 
 .project-item {
@@ -387,11 +478,68 @@ const formatDate = (dateString: string) => {
   opacity: 0.5;
 }
 
-/* FAB */
-.fab {
+/* ========= FAB com menu ========= */
+.fab-container {
   position: fixed;
-  bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 12px);
+  bottom: 20px;
   right: 16px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.fab-menu-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 49;
+}
+
+.fab-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fab-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  background: var(--p-surface-0);
+  border: 1px solid var(--p-surface-200);
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--p-text-color);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.15s;
+}
+
+.fab-menu-item:active {
+  background: var(--p-surface-100);
+  transform: scale(0.97);
+}
+
+.fab-menu-item i {
+  font-size: 1rem;
+  color: var(--p-primary-color);
+}
+
+.fab {
   width: 48px;
   height: 48px;
   border-radius: 14px;
@@ -403,7 +551,6 @@ const formatDate = (dateString: string) => {
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 50;
   transition: all 0.2s ease;
   -webkit-tap-highlight-color: transparent;
 }
@@ -414,6 +561,11 @@ const formatDate = (dateString: string) => {
 
 .fab i {
   font-size: 1.25rem;
+  transition: transform 0.2s ease;
+}
+
+.fab i.rotated {
+  transform: rotate(45deg);
 }
 
 /* ========= Formulário full-screen ========= */
@@ -507,12 +659,5 @@ const formatDate = (dateString: string) => {
   width: 100%;
   height: 40px;
   font-size: 0.9rem;
-}
-
-@media (min-width: 992px) {
-  .fab {
-    bottom: 24px;
-    right: 24px;
-  }
 }
 </style>

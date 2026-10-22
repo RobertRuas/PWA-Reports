@@ -1,7 +1,5 @@
 <template>
   <div class="triage-page">
-    <PageHeader title="Triagem" subtitle="Carregue fotos" />
-
     <div class="content">
       <!-- Upload Area -->
       <div
@@ -64,41 +62,24 @@
         <span>Toque acima para carregar</span>
       </div>
     </div>
-
-    <!-- Navigation Buttons -->
-    <div class="nav-buttons">
-      <Button
-        icon="pi pi-arrow-left"
-        label="Voltar"
-        severity="secondary"
-        size="small"
-        @click="goBack"
-      />
-      <Button
-        icon="pi pi-arrow-right"
-        label="Revisar"
-        size="small"
-        :disabled="allPhotos.length === 0"
-        @click="goToReview"
-      />
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import PageHeader from '../../../components/ui/PageHeader.vue'
-import Button from 'primevue/button'
 import { usePhotosStore } from '../../../stores/photos'
+import { useProjectsStore } from '../../../stores/projects'
 import type { Photo } from '../../../core/database/schemas/project.schema'
 
 const router = useRouter()
 const route = useRoute()
 const photoStore = usePhotosStore()
+const projectStore = useProjectsStore()
 
 const fileInput = ref<HTMLInputElement>()
 const projectId = ref<string>('')
+const projectName = ref<string>('')
 const isDragging = ref(false)
 const isUploading = ref(false)
 const uploadProgress = ref(0)
@@ -110,6 +91,11 @@ const allPhotos = computed(() => photoStore.projectPhotos)
 onMounted(async () => {
   projectId.value = route.params.projectId as string
   await photoStore.loadPhotos(projectId.value)
+  // Obter nome do projeto para gerar nomes de ficheiro
+  const project = await projectStore.getProject(projectId.value)
+  if (project) {
+    projectName.value = project.name
+  }
 })
 
 const handleFileSelect = async (event: Event) => {
@@ -138,7 +124,7 @@ const uploadFiles = async (files: File[]) => {
   uploadProgress.value = 0
 
   for (const file of files) {
-    await photoStore.addPhoto(projectId.value, 'Inbox', file)
+    await photoStore.addPhoto(projectId.value, 'Inbox', file, projectName.value)
     uploadedCount.value++
     uploadProgress.value = Math.round((uploadedCount.value / totalUploadCount.value) * 100)
   }
@@ -155,21 +141,14 @@ const getPhotoUrl = (photo: Photo) => {
 const viewPhoto = (photo: Photo) => {
   router.push(`/project/${projectId.value}/viewer/${photo.id}`)
 }
-
-const goBack = () => {
-  router.push(`/project/${projectId.value}`)
-}
-
-const goToReview = () => {
-  router.push(`/project/${projectId.value}/review`)
-}
 </script>
 
 <style scoped>
 .triage-page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100%;
+  overscroll-behavior: none;
 }
 
 .content {
@@ -181,6 +160,7 @@ const goToReview = () => {
   flex-direction: column;
   gap: 0.75rem;
   position: relative;
+  overscroll-behavior: none;
 }
 
 /* ========= Upload area ========= */
@@ -378,20 +358,5 @@ const goToReview = () => {
 .empty-state span {
   font-size: 0.8rem;
   color: var(--p-text-color-secondary);
-}
-
-/* ========= Nav buttons ========= */
-.nav-buttons {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border-top: 1px solid var(--p-surface-200);
-  background: var(--p-surface-0);
-}
-
-.nav-buttons button {
-  flex: 1;
-  height: 40px;
-  font-size: 0.85rem;
 }
 </style>

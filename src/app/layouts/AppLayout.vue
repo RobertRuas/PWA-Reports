@@ -1,12 +1,11 @@
 <template>
   <div class="app-layout">
-    <!-- Top bar -->
+    <!-- Barra superior fixa -->
     <div class="app-topbar">
       <Button
         icon="pi pi-bars"
         text
         rounded
-        size="small"
         class="topbar-menu-btn"
         @click="drawerVisible = true"
       />
@@ -14,7 +13,7 @@
       <ConnectionStatus />
     </div>
 
-    <!-- Sidebar drawer (mobile + tablet) -->
+    <!-- Drawer lateral (mobile + tablet) -->
     <Drawer v-model:visible="drawerVisible" :modal="true" class="app-drawer">
       <template #header>
         <div class="drawer-header">
@@ -36,7 +35,7 @@
       </nav>
     </Drawer>
 
-    <!-- Desktop sidebar -->
+    <!-- Sidebar desktop -->
     <aside class="app-sidebar">
       <div class="sidebar-header">
         <i class="pi pi-box" style="font-size: 1.25rem; color: var(--p-primary-color);" />
@@ -56,24 +55,15 @@
       </nav>
     </aside>
 
-    <!-- Main content -->
+    <!-- Breadcrumb abaixo da topbar -->
+    <div class="app-breadcrumb-bar">
+      <AppBreadcrumb />
+    </div>
+
+    <!-- Conteúdo principal -->
     <main class="app-main">
       <router-view />
     </main>
-
-    <!-- Mobile bottom tabs -->
-    <div class="app-bottom-tabs">
-      <button
-        v-for="tab in bottomTabs"
-        :key="tab.route"
-        class="bottom-tab"
-        :class="{ active: isActive(tab.route) }"
-        @click="router.push(tab.route)"
-      >
-        <i :class="tab.icon" class="bottom-tab-icon" />
-        <span class="bottom-tab-label">{{ tab.label }}</span>
-      </button>
-    </div>
   </div>
 </template>
 
@@ -83,6 +73,7 @@ import { useRouter, useRoute } from 'vue-router'
 import Button from 'primevue/button'
 import Drawer from 'primevue/drawer'
 import ConnectionStatus from '../../components/feedback/ConnectionStatus.vue'
+import AppBreadcrumb from '../../components/ui/AppBreadcrumb.vue'
 import { appConfig } from '../config/app.config'
 
 const router = useRouter()
@@ -92,11 +83,6 @@ const drawerVisible = ref(false)
 const navItems = [
   { label: 'Projetos', icon: 'pi pi-home', route: '/home' },
   { label: 'Configurações', icon: 'pi pi-cog', route: '/settings' },
-]
-
-const bottomTabs = [
-  { label: 'Projetos', icon: 'pi pi-home', route: '/home' },
-  { label: 'Config', icon: 'pi pi-cog', route: '/settings' },
 ]
 
 function isActive(path: string): boolean {
@@ -112,21 +98,23 @@ function navigateTo(path: string) {
 <style scoped>
 .app-layout {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
+  overscroll-behavior: none;
 }
 
-/* Top bar - compact for mobile */
+/* Barra superior - maior e fixa */
 .app-topbar {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 44px;
-  padding: 0 0.6rem;
+  height: 52px;
+  padding: 0 0.75rem;
   background: var(--p-surface-0);
   border-bottom: 1px solid var(--p-surface-200);
   z-index: 100;
@@ -134,12 +122,28 @@ function navigateTo(path: string) {
 
 .topbar-title {
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 1rem;
   flex: 1;
 }
 
-.topbar-menu-btn {
-  display: flex;
+/* Ícone de menu maior */
+:deep(.topbar-menu-btn) {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+:deep(.topbar-menu-btn .p-button-icon) {
+  font-size: 1.25rem !important;
+}
+
+/* Breadcrumb bar abaixo da topbar */
+.app-breadcrumb-bar {
+  position: fixed;
+  top: 52px;
+  left: 0;
+  right: 0;
+  z-index: 99;
+  background: var(--p-surface-0);
 }
 
 /* Drawer */
@@ -154,7 +158,7 @@ function navigateTo(path: string) {
   font-size: 1rem;
 }
 
-/* Desktop sidebar */
+/* Sidebar desktop */
 .app-sidebar {
   display: none;
   width: 220px;
@@ -182,7 +186,7 @@ function navigateTo(path: string) {
   font-size: 1rem;
 }
 
-/* Navigation */
+/* Navegação */
 .nav-list {
   display: flex;
   flex-direction: column;
@@ -219,55 +223,13 @@ function navigateTo(path: string) {
   text-align: center;
 }
 
-/* Main content */
+/* Conteúdo principal - sem bottom tabs */
 .app-main {
   flex: 1;
-  padding-top: 44px;
-  padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+  /* topbar 52px + breadcrumb ~34px */
+  padding-top: 86px;
   min-width: 0;
-  overflow-y: auto;
-}
-
-/* Bottom tabs - compact */
-.app-bottom-tabs {
-  display: flex;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: var(--p-surface-0);
-  border-top: 1px solid var(--p-surface-200);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  z-index: 100;
-}
-
-.bottom-tab {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 0.3rem 0;
-  background: none;
-  border: none;
-  color: var(--p-text-muted-color);
-  cursor: pointer;
-  font-size: inherit;
-  -webkit-tap-highlight-color: transparent;
-  transition: color 0.15s;
-}
-
-.bottom-tab.active {
-  color: var(--p-primary-color);
-}
-
-.bottom-tab-icon {
-  font-size: 1.1rem;
-}
-
-.bottom-tab-label {
-  font-size: 0.6rem;
-  font-weight: 500;
+  overscroll-behavior: none;
 }
 
 /* Desktop */
@@ -276,7 +238,7 @@ function navigateTo(path: string) {
     display: none;
   }
 
-  .topbar-menu-btn {
+  .app-breadcrumb-bar {
     display: none;
   }
 
@@ -287,11 +249,6 @@ function navigateTo(path: string) {
   .app-main {
     margin-left: 220px;
     padding-top: 0;
-    padding-bottom: 0;
-  }
-
-  .app-bottom-tabs {
-    display: none;
   }
 }
 </style>

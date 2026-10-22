@@ -9,6 +9,7 @@
 html {
   -webkit-text-size-adjust: 100%;
   font-size: 14px;
+  overscroll-behavior: none;
 }
 
 body {
@@ -17,6 +18,12 @@ body {
   background: var(--p-surface-ground);
   font-size: 0.875rem;
   line-height: 1.5;
+  overscroll-behavior: none;
+}
+
+/* Tema fixo claro */
+:root {
+  color-scheme: light;
 }
 
 /* iOS Safari: inputs >=16px to prevent auto-zoom on focus */

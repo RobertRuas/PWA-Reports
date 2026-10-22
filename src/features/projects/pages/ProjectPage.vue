@@ -1,12 +1,5 @@
 <template>
   <div class="project-page">
-    <PageHeader
-      :title="project?.name || 'Projeto'"
-      :subtitle="getMapInfo(project?.mapId || '')?.name"
-      :show-back="true"
-      back-href="/home"
-    />
-
     <div class="content">
       <!-- Stats compactos -->
       <div class="stats-row">
@@ -15,27 +8,41 @@
           <span>{{ allPhotos.length }}</span>
           <small>total</small>
         </div>
-        <div class="stat-chip inbox">
-          <i class="pi pi-inbox"></i>
+        <div v-if="inboxCount > 0" class="stat-chip inbox">
+          <i class="pi pi-upload"></i>
           <span>{{ inboxCount }}</span>
-          <small>inbox</small>
+          <small>por categorizar</small>
         </div>
         <div class="stat-chip done">
           <i class="pi pi-check"></i>
           <span>{{ organizedCount }}</span>
-          <small>feitas</small>
+          <small>organizadas</small>
         </div>
       </div>
 
       <!-- Ações -->
       <div class="actions-list">
-        <button class="action-item" @click="goToTriage">
+        <!-- Fotos por categorizar - só visível quando existem fotos no Inbox -->
+        <button v-if="inboxCount > 0" class="action-item" @click="goToTriage">
           <div class="action-icon triage">
+            <i class="pi pi-upload"></i>
+          </div>
+          <div class="action-text">
+            <strong>Fotos por categorizar</strong>
+            <span>{{ inboxCount }} foto(s) aguardando triagem</span>
+          </div>
+          <span class="action-badge">{{ inboxCount }}</span>
+          <i class="pi pi-chevron-right action-arrow"></i>
+        </button>
+
+        <!-- Importar mais fotos -->
+        <button class="action-item" @click="goToTriage">
+          <div class="action-icon import">
             <i class="pi pi-camera"></i>
           </div>
           <div class="action-text">
-            <strong>Triagem</strong>
-            <span>Envie fotos da galeria</span>
+            <strong>Importar Fotos</strong>
+            <span>Adicionar fotos da galeria</span>
           </div>
           <i class="pi pi-chevron-right action-arrow"></i>
         </button>
@@ -46,9 +53,8 @@
           </div>
           <div class="action-text">
             <strong>Revisão</strong>
-            <span>Classifique fotos por pasta</span>
+            <span>{{ allPhotos.length }} fotos no projeto</span>
           </div>
-          <span v-if="inboxCount > 0" class="action-badge">{{ inboxCount }}</span>
           <i class="pi pi-chevron-right action-arrow"></i>
         </button>
 
@@ -70,10 +76,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import PageHeader from '../../../components/ui/PageHeader.vue'
 import { useProjectsStore } from '../../../stores/projects'
 import { usePhotosStore } from '../../../stores/photos'
-import type { Project } from '../../../core/database/schemas/project.schema'
 
 const router = useRouter()
 const route = useRoute()
@@ -81,7 +85,6 @@ const projectStore = useProjectsStore()
 const photoStore = usePhotosStore()
 
 const projectId = ref<string>('')
-const project = ref<Project | null>(null)
 
 const allPhotos = computed(() => photoStore.projectPhotos)
 const photosByFolder = computed(() => photoStore.photosByFolder)
@@ -98,16 +101,9 @@ const organizedCount = computed(() => {
 
 onMounted(async () => {
   projectId.value = route.params.projectId as string
-  const p = await projectStore.getProject(projectId.value)
-  if (p) {
-    project.value = p
-  }
+  await projectStore.getProject(projectId.value)
   await photoStore.loadPhotos(projectId.value)
 })
-
-const getMapInfo = (mapId: string) => {
-  return projectStore.getMapInfo(mapId)
-}
 
 const goToTriage = () => {
   router.push(`/project/${projectId.value}/triage`)
@@ -126,16 +122,17 @@ const goToExport = () => {
 .project-page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100%;
+  overscroll-behavior: none;
 }
 
 .content {
   flex: 1;
   padding: 0.75rem;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overscroll-behavior: none;
 }
 
 /* ========= Stats ========= */
@@ -220,6 +217,11 @@ const goToExport = () => {
 }
 
 .action-icon.triage {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.action-icon.import {
   background: #ede9fe;
   color: #7c3aed;
 }

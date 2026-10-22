@@ -53,6 +53,10 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
   routes,
+  // Garantir que cada página inicia no topo
+  scrollBehavior() {
+    return { top: 0 }
+  },
 })
 
 export default router

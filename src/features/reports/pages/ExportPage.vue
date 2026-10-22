@@ -1,84 +1,66 @@
 <template>
   <div class="export-page">
-    <PageHeader title="Exportar" subtitle="Baixar Projeto" />
-
     <div class="content">
-      <Card class="export-card">
-        <template #title>
-          <i class="pi pi-download" style="margin-right: 0.5rem;"></i>
-          Exportar Projeto
-        </template>
-        <template #content>
-          <p>Baixe seu projeto em formato ZIP com todas as fotos organizadas.</p>
+      <!-- Info compacto horizontal -->
+      <div class="export-summary">
+        <div class="summary-item">
+          <i class="pi pi-folder"></i>
+          <span>{{ project?.name }}</span>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-item">
+          <i class="pi pi-images"></i>
+          <span>{{ projectPhotos.length }} fotos</span>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-item">
+          <i class="pi pi-file"></i>
+          <span>ZIP</span>
+        </div>
+      </div>
 
-          <div class="export-info">
-            <div class="info-row">
-              <span><i class="pi pi-folder"></i> Nome:</span>
-              <strong>{{ project?.name }}</strong>
-            </div>
-            <div class="info-row">
-              <span><i class="pi pi-images"></i> Fotos:</span>
-              <strong>{{ projectPhotos.length }}</strong>
-            </div>
-            <div class="info-row">
-              <span><i class="pi pi-file"></i> Tipo:</span>
-              <strong>ZIP com pastas</strong>
-            </div>
-          </div>
+      <!-- Botões de ação -->
+      <div class="action-buttons">
+        <button class="action-btn download" :disabled="isExporting" @click="handleExport">
+          <i :class="isExporting ? 'pi pi-spin pi-spinner' : 'pi pi-download'"></i>
+          <span>{{ isExporting ? 'Baixando...' : 'Baixar ZIP' }}</span>
+        </button>
 
-          <Button
-            :label="isExporting ? 'Baixando...' : 'Baixar ZIP'"
-            icon="pi pi-download"
-            :loading="isExporting"
-            class="export-button"
-            @click="handleExport"
-          />
-        </template>
-      </Card>
+        <button class="action-btn share" :disabled="isExporting" @click="handleShare">
+          <i class="pi pi-share-alt"></i>
+          <span>Compartilhar</span>
+        </button>
+      </div>
 
-      <Card v-if="project" class="info-card">
-        <template #title>
-          <i class="pi pi-info-circle" style="margin-right: 0.5rem;"></i>
-          Estrutura
-        </template>
-        <template #content>
-          <pre class="structure-preview">{{ projectName }}/
+      <!-- Estrutura do ZIP -->
+      <div v-if="project" class="structure-section">
+        <div class="section-header">
+          <i class="pi pi-sitemap"></i>
+          <span>Estrutura do ZIP</span>
+        </div>
+        <pre class="structure-preview">{{ project.name }}/
 ├── fastreport.json
 ├── Inbox/
 ├── General/
 ├── Trash/
 {{ project.mapId === 'inspection-t24' ? '├── T1/\n├── T2/\n...\n└── T24/' : '├── C12/\n├── C25/\n├── T01/\n...\n└── T09/' }}
 </pre>
-          <p class="compat-note">
-            <i class="pi pi-check"></i>
-            Compatível com FastReport para Mac
-          </p>
-        </template>
-      </Card>
-    </div>
-
-    <div class="nav-buttons">
-      <Button
-        icon="pi pi-arrow-left"
-        label="Voltar"
-        severity="secondary"
-        @click="goBack"
-      />
+        <div class="compat-note">
+          <i class="pi pi-check-circle"></i>
+          <span>Compatível com FastReport para Mac</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import PageHeader from '../../../components/ui/PageHeader.vue'
-import Button from 'primevue/button'
-import Card from 'primevue/card'
+import { useRoute } from 'vue-router'
 import { usePhotosStore } from '../../../stores/photos'
 import { useProjectsStore } from '../../../stores/projects'
 import type { Project } from '../../../core/database/schemas/project.schema'
 
-const router = useRouter()
 const route = useRoute()
 const photoStore = usePhotosStore()
 const projectStore = useProjectsStore()
@@ -100,54 +82,59 @@ onMounted(async () => {
   await photoStore.loadPhotos(projectId.value)
 })
 
+// Gerar o blob ZIP reutilizável
+const generateZipBlob = async (): Promise<Blob> => {
+  const JSZip = (await import('jszip')).default
+  const zip = new JSZip()
+
+  // Adicionar fastreport.json
+  const metadata = {
+    createdAt: project.value?.createdAt || new Date().toISOString(),
+    displayName: project.value?.name || 'Projeto',
+    mapId: project.value?.mapId || 'inspection-t24',
+    schemaVersion: 1,
+  }
+  zip.file('fastreport.json', JSON.stringify(metadata, null, 2))
+
+  // Agrupar fotos por pasta
+  const photosByFolder: Record<string, any[]> = {}
+  projectPhotos.forEach(photo => {
+    if (!photosByFolder[photo.folder]) {
+      photosByFolder[photo.folder] = []
+    }
+    photosByFolder[photo.folder].push(photo)
+  })
+
+  // Adicionar pastas e fotos
+  for (const [folder, photos] of Object.entries(photosByFolder)) {
+    for (const photo of photos) {
+      const arrayBuffer = await photo.data.arrayBuffer()
+      zip.folder(folder)?.file(photo.filename, arrayBuffer)
+    }
+  }
+
+  // Criar pastas vazias
+  const emptyFolders = ['Inbox', 'General', 'Trash']
+  emptyFolders.forEach(folder => {
+    zip.folder(folder)
+  })
+
+  return await zip.generateAsync({ type: 'blob' })
+}
+
 const handleExport = async () => {
   isExporting.value = true
   try {
-    // Dynamic import de JSZip
-    const JSZip = (await import('jszip')).default
-
-    const zip = new JSZip()
-
-    // Adicionar fastreport.json
-    const metadata = {
-      createdAt: project.value?.createdAt || new Date().toISOString(),
-      displayName: project.value?.name || 'Projeto',
-      mapId: project.value?.mapId || 'inspection-t24',
-      schemaVersion: 1,
-    }
-    zip.file('fastreport.json', JSON.stringify(metadata, null, 2))
-
-    // Agrupar fotos por pasta
-    const photosByFolder: Record<string, any[]> = {}
-    projectPhotos.forEach(photo => {
-      if (!photosByFolder[photo.folder]) {
-        photosByFolder[photo.folder] = []
-      }
-      photosByFolder[photo.folder].push(photo)
-    })
-
-    // Adicionar pastas e fotos
-    for (const [folder, photos] of Object.entries(photosByFolder)) {
-      for (const photo of photos) {
-        const arrayBuffer = await photo.data.arrayBuffer()
-        zip.folder(folder)?.file(photo.filename, arrayBuffer)
-      }
-    }
-
-    // Criar pastas vazias
-    const emptyFolders = ['Inbox', 'General', 'Trash']
-    emptyFolders.forEach(folder => {
-      zip.folder(folder)
-    })
-
-    // Gerar e baixar ZIP
-    const content = await zip.generateAsync({ type: 'blob' })
+    const content = await generateZipBlob()
     const url = URL.createObjectURL(content)
     const a = document.createElement('a')
     a.href = url
     a.download = `${projectName.value}.zip`
     a.click()
     URL.revokeObjectURL(url)
+
+    // Marcar como exportado
+    localStorage.setItem(`project-exported-${projectId.value}`, 'true')
   } catch (err) {
     console.error('Erro ao exportar:', err)
     alert('Erro ao exportar projeto')
@@ -156,8 +143,35 @@ const handleExport = async () => {
   }
 }
 
-const goBack = () => {
-  router.push(`/project/${projectId.value}`)
+const handleShare = async () => {
+  // Verificar suporte ao Web Share API
+  if (!navigator.share) {
+    alert('Compartilhamento não suportado neste navegador. Use o botão Baixar.')
+    return
+  }
+
+  isExporting.value = true
+  try {
+    const content = await generateZipBlob()
+    const file = new File([content], `${projectName.value}.zip`, { type: 'application/zip' })
+
+    await navigator.share({
+      title: project.value?.name || 'Projeto',
+      text: `Projeto ${project.value?.name} - PWA Reports`,
+      files: [file],
+    })
+
+    // Marcar como exportado
+    localStorage.setItem(`project-exported-${projectId.value}`, 'true')
+  } catch (err: any) {
+    // Ignorar cancelamento do usuário
+    if (err.name !== 'AbortError') {
+      console.error('Erro ao compartilhar:', err)
+      alert('Erro ao compartilhar projeto')
+    }
+  } finally {
+    isExporting.value = false
+  }
 }
 </script>
 
@@ -165,151 +179,154 @@ const goBack = () => {
 .export-page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100%;
+  overscroll-behavior: none;
 }
 
 .content {
   flex: 1;
-  padding: 1rem;
-  overflow-y: auto;
-  overflow-x: hidden;
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: 1fr;
-  max-width: 100%;
-}
-
-.export-card,
-.info-card {
-  background: var(--p-surface-50);
-  animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.export-info {
-  margin: 1.5rem 0;
-  padding: 1.25rem;
-  background: var(--p-surface-100);
-  border-radius: 8px;
-  border-left: 4px solid var(--p-primary-color);
-}
-
-.info-row {
+  padding: 0.75rem;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 0.75rem 0;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--p-surface-200);
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  overscroll-behavior: none;
 }
 
-.info-row:last-child {
-  border-bottom: none;
-}
-
-.info-row span {
+/* ========= Resumo compacto horizontal ========= */
+.export-summary {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--p-text-color-secondary);
-  font-size: 0.9rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--p-surface-50);
+  border: 1px solid var(--p-surface-200);
+  border-radius: 10px;
 }
 
-.info-row i {
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.summary-item i {
+  font-size: 0.8rem;
   color: var(--p-primary-color);
+  flex-shrink: 0;
 }
 
-.info-row strong {
+.summary-item span {
+  font-size: 0.8rem;
+  font-weight: 500;
   color: var(--p-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.summary-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--p-surface-300);
+  flex-shrink: 0;
+}
+
+/* ========= Botões de ação ========= */
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.action-btn:active {
+  transform: scale(0.97);
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.action-btn.download {
+  background: var(--p-primary-color);
+  color: white;
+}
+
+.action-btn.share {
+  background: var(--p-surface-100);
+  color: var(--p-text-color);
+  border: 1px solid var(--p-surface-300);
+}
+
+.action-btn i {
   font-size: 1rem;
 }
 
-.export-button {
-  width: 100%;
-  height: 44px;
-  margin-top: 1.5rem;
-  font-size: 1rem;
+/* ========= Estrutura ========= */
+.structure-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
   font-weight: 600;
+  color: var(--p-text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.section-header i {
+  font-size: 0.75rem;
 }
 
 .structure-preview {
   background: var(--p-surface-800);
-  color: var(--p-surface-0);
-  padding: 1.25rem;
+  color: var(--p-surface-100);
+  padding: 0.75rem 1rem;
   border-radius: 8px;
   overflow-x: auto;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-family: 'Courier New', monospace;
   line-height: 1.5;
-  margin: 1rem 0;
-  border: 1px solid var(--p-surface-700);
+  margin: 0;
 }
 
 .compat-note {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background: var(--p-success-50);
-  border-left: 3px solid var(--p-success-color);
-  border-radius: 4px;
-  font-size: 0.9rem;
-  color: var(--p-text-color);
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  background: #ecfdf5;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: #065f46;
 }
 
 .compat-note i {
-  color: var(--p-success-color);
-}
-
-.nav-buttons {
-  display: flex;
-  gap: 0.75rem;
-  padding: 1rem;
-  border-top: 1px solid var(--p-surface-200);
-  background: var(--p-surface-0);
-}
-
-.nav-buttons button {
-  flex: 1;
-  height: 44px;
-  font-size: 0.9rem;
-}
-
-@media (max-width: 600px) {
-  .content {
-    padding: 0.75rem;
-    gap: 0.75rem;
-  }
-
-  .export-info {
-    padding: 1rem;
-    margin: 1rem 0;
-  }
-
-  .info-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-  }
-
-  .structure-preview {
-    font-size: 0.8rem;
-    padding: 1rem;
-  }
-
-  :deep(.p-card) {
-    margin: 0 !important;
-  }
+  font-size: 0.85rem;
+  color: #059669;
 }
 </style>

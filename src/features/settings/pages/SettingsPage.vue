@@ -1,130 +1,72 @@
 <template>
   <div class="settings-page">
-    <PageHeader :title="t('settings.title')" />
-
     <div class="settings-content">
-      <!-- Language Settings -->
-      <Card>
-        <template #title>
-          <i class="pi pi-globe" style="margin-right: 0.5rem;"></i>
-          {{ t('settings.language') }}
-        </template>
-        <template #content>
-          <div class="setting-group">
-            <label>{{ t('settings.chooseLanguage') }}</label>
-            <Dropdown
-              :options="languages"
-              option-label="label"
-              option-value="value"
-              :model-value="i18nStore.locale"
-              @update:model-value="changeLanguage"
-            />
-            <p class="hint">{{ t('settings.languageHint') }}</p>
+      <!-- Idioma - compacto -->
+      <div class="settings-card">
+        <div class="card-row">
+          <div class="card-row-label">
+            <i class="pi pi-globe"></i>
+            <span>{{ t('settings.language') }}</span>
           </div>
-        </template>
-      </Card>
+          <Dropdown
+            :options="languages"
+            option-label="label"
+            option-value="value"
+            :model-value="i18nStore.locale"
+            class="lang-dropdown"
+            @update:model-value="changeLanguage"
+          />
+        </div>
+      </div>
 
-      <!-- Theme Settings -->
-      <Card>
-        <template #title>
-          <i class="pi pi-palette" style="margin-right: 0.5rem;"></i>
-          {{ t('settings.theme') }}
-        </template>
-        <template #content>
-          <div class="setting-group">
-            <label>{{ t('settings.themeMode') }}</label>
-            <div class="theme-buttons">
-              <Button
-                :label="t('settings.light')"
-                :severity="isDarkMode ? 'secondary' : 'primary'"
-                :icon="isDarkMode ? '' : 'pi pi-check'"
-                @click="setTheme('light')"
-              />
-              <Button
-                :label="t('settings.dark')"
-                :severity="isDarkMode ? 'primary' : 'secondary'"
-                :icon="isDarkMode ? 'pi pi-check' : ''"
-                @click="setTheme('dark')"
-              />
-              <Button
-                :label="t('settings.auto')"
-                :severity="themeMode === 'auto' ? 'primary' : 'secondary'"
-                :icon="themeMode === 'auto' ? 'pi pi-check' : ''"
-                @click="setTheme('auto')"
-              />
-            </div>
-            <p class="hint">{{ t('settings.themeHint') }}</p>
+      <!-- Armazenamento - compacto -->
+      <div class="settings-card">
+        <div class="card-header">
+          <i class="pi pi-database"></i>
+          <span>{{ t('settings.storage') }}</span>
+        </div>
+        <div class="storage-stats">
+          <div class="storage-stat">
+            <span class="stat-value">{{ projectCount }}</span>
+            <span class="stat-label">{{ t('settings.totalProjects') }}</span>
           </div>
-        </template>
-      </Card>
+          <div class="storage-stat">
+            <span class="stat-value">{{ photoCount }}</span>
+            <span class="stat-label">{{ t('settings.totalPhotos') }}</span>
+          </div>
+          <div class="storage-stat">
+            <span class="stat-value">{{ formatBytes(dbSize) }}</span>
+            <span class="stat-label">{{ t('settings.dbSize') }}</span>
+          </div>
+        </div>
+        <button class="clear-btn" @click="clearCache">
+          <i class="pi pi-trash"></i>
+          <span>{{ t('settings.clearCache') }}</span>
+        </button>
+      </div>
 
-      <!-- Storage Info -->
-      <Card>
-        <template #title>
-          <i class="pi pi-database" style="margin-right: 0.5rem;"></i>
-          {{ t('settings.storage') }}
-        </template>
-        <template #content>
-          <div class="storage-info">
-            <div class="storage-row">
-              <span>{{ t('settings.totalProjects') }}</span>
-              <strong>{{ projectCount }}</strong>
-            </div>
-            <div class="storage-row">
-              <span>{{ t('settings.totalPhotos') }}</span>
-              <strong>{{ photoCount }}</strong>
-            </div>
-            <div class="storage-row">
-              <span>{{ t('settings.dbSize') }}</span>
-              <strong>{{ formatBytes(dbSize) }}</strong>
-            </div>
-            <Button
-              :label="t('settings.clearCache')"
-              severity="danger"
-              icon="pi pi-trash"
-              class="clear-btn"
-              @click="clearCache"
-            />
-          </div>
-        </template>
-      </Card>
-
-      <!-- About -->
-      <Card>
-        <template #title>
-          <i class="pi pi-info-circle" style="margin-right: 0.5rem;"></i>
-          {{ t('settings.about') }}
-        </template>
-        <template #content>
-          <div class="about-info">
-            <p><strong>PWA Reports</strong></p>
-            <p>{{ t('settings.version') }}: v2.0.0</p>
-            <p class="description">{{ t('settings.description') }}</p>
-            <div class="features">
-              <h4>{{ t('settings.features') }}:</h4>
-              <ul>
-                <li>{{ t('settings.feature1') }}</li>
-                <li>{{ t('settings.feature2') }}</li>
-                <li>{{ t('settings.feature3') }}</li>
-                <li>{{ t('settings.feature4') }}</li>
-              </ul>
-            </div>
-            <p class="hint" style="margin-top: 1rem;">
-              <strong>{{ t('settings.offline') }}</strong>
-            </p>
-          </div>
-        </template>
-      </Card>
+      <!-- Sobre - compacto -->
+      <div class="settings-card">
+        <div class="card-header">
+          <i class="pi pi-info-circle"></i>
+          <span>{{ t('settings.about') }}</span>
+        </div>
+        <div class="about-compact">
+          <p class="app-name">PWA Reports <span class="version">v2.0.0</span></p>
+          <p class="app-desc">{{ t('settings.description') }}</p>
+          <p class="offline-badge">
+            <i class="pi pi-wifi"></i>
+            {{ t('settings.offline') }}
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import PageHeader from '../../../components/ui/PageHeader.vue'
-import Card from 'primevue/card'
 import Dropdown from 'primevue/dropdown'
-import Button from 'primevue/button'
 import { useI18nStore } from '../../../stores/i18n'
 import { db } from '../../../core/database/db'
 
@@ -133,8 +75,6 @@ const i18nStore = useI18nStore()
 const projectCount = ref(0)
 const photoCount = ref(0)
 const dbSize = ref(0)
-const isDarkMode = ref(false)
-const themeMode = ref<'light' | 'dark' | 'auto'>('auto')
 
 const languages = [
   { label: 'Português', value: 'pt' },
@@ -156,23 +96,6 @@ const changeLanguage = (lang: string) => {
   }
 }
 
-const setTheme = (mode: 'light' | 'dark' | 'auto') => {
-  themeMode.value = mode
-  localStorage.setItem('theme-mode', mode)
-
-  if (mode === 'auto') {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    isDarkMode.value = prefersDark
-    document.documentElement.removeAttribute('data-theme')
-  } else if (mode === 'dark') {
-    isDarkMode.value = true
-    document.documentElement.setAttribute('data-theme', 'dark')
-  } else {
-    isDarkMode.value = false
-    document.documentElement.setAttribute('data-theme', 'light')
-  }
-}
-
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B'
   const k = 1024
@@ -189,7 +112,6 @@ const calculateStorageSize = async () => {
     projectCount.value = projects.length
     photoCount.value = photos.length
 
-    // Estimate size
     let size = 0
     projects.forEach(p => {
       size += JSON.stringify(p).length
@@ -221,18 +143,6 @@ const clearCache = async () => {
 }
 
 onMounted(() => {
-  // Load theme preference
-  const savedTheme = localStorage.getItem('theme-mode') as 'light' | 'dark' | 'auto' | null
-  themeMode.value = savedTheme || 'auto'
-
-  if (themeMode.value === 'auto') {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    isDarkMode.value = prefersDark
-  } else {
-    isDarkMode.value = themeMode.value === 'dark'
-  }
-
-  // Calculate storage
   calculateStorageSize()
 })
 </script>
@@ -241,119 +151,172 @@ onMounted(() => {
 .settings-page {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100%;
+  overscroll-behavior: none;
 }
 
 .settings-content {
   flex: 1;
-  padding: 1rem;
+  padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.5rem;
   overflow-y: auto;
-  max-width: 600px;
+  overscroll-behavior: none;
 }
 
-.setting-group {
+/* ========= Card genérico ========= */
+.settings-card {
+  background: var(--p-surface-50);
+  border: 1px solid var(--p-surface-200);
+  border-radius: 10px;
+  padding: 0.75rem;
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--p-text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.card-header i {
+  font-size: 0.75rem;
+}
+
+/* ========= Idioma em linha ========= */
+.card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.75rem;
 }
 
-.setting-group label {
+.card-row-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: var(--p-text-color);
-  font-size: 0.95rem;
 }
 
-.hint {
-  font-size: 0.85rem;
-  color: var(--p-text-color-secondary);
-  margin: 0;
+.card-row-label i {
+  font-size: 0.9rem;
+  color: var(--p-primary-color);
 }
 
-.theme-buttons {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+:deep(.lang-dropdown) {
+  font-size: 16px !important;
+  min-width: 140px;
+}
+
+:deep(.lang-dropdown .p-select-label) {
+  font-size: 16px !important;
+  padding: 0.4rem 0.6rem;
+}
+
+/* ========= Storage compacto ========= */
+.storage-stats {
+  display: flex;
   gap: 0.5rem;
 }
 
-:deep(.theme-buttons .p-button) {
-  height: 44px;
-  font-size: 0.9rem;
-}
-
-.storage-info {
+.storage-stat {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-}
-
-.storage-row {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0.75rem;
-  background: var(--p-surface-50);
-  border-radius: var(--p-border-radius);
+  gap: 0.1rem;
+  padding: 0.4rem;
+  background: var(--p-surface-0);
+  border-radius: 8px;
 }
 
-.storage-row span {
-  color: var(--p-text-color-secondary);
-}
-
-.storage-row strong {
+.stat-value {
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--p-primary-color);
-  font-size: 1.1rem;
+}
+
+.stat-label {
+  font-size: 0.6rem;
+  color: var(--p-text-color-secondary);
+  text-transform: uppercase;
+  font-weight: 500;
+  text-align: center;
 }
 
 .clear-btn {
-  width: 100%;
-  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  background: none;
+  border: 1px solid var(--p-red-200, #fecaca);
+  border-radius: 8px;
+  color: var(--p-red-600, #dc2626);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.15s;
 }
 
-.about-info {
+.clear-btn:active {
+  background: var(--p-red-50, #fef2f2);
+  transform: scale(0.97);
+}
+
+.clear-btn i {
+  font-size: 0.75rem;
+}
+
+/* ========= Sobre compacto ========= */
+.about-compact {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.3rem;
 }
 
-.about-info p {
-  margin: 0.25rem 0;
-  color: var(--p-text-color);
-}
-
-.about-info strong {
-  color: var(--p-text-color);
-}
-
-.description {
-  font-size: 0.9rem;
-  color: var(--p-text-color-secondary);
-  margin: 0.5rem 0;
-}
-
-.features {
-  margin: 1rem 0;
-  padding: 1rem;
-  background: var(--p-surface-50);
-  border-radius: var(--p-border-radius);
-}
-
-.features h4 {
-  margin: 0 0 0.5rem 0;
-  color: var(--p-text-color);
-  font-size: 0.95rem;
-}
-
-.features ul {
+.app-name {
   margin: 0;
-  padding-left: 1.5rem;
-  color: var(--p-text-color-secondary);
   font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--p-text-color);
 }
 
-.features li {
-  margin: 0.25rem 0;
+.version {
+  font-weight: 400;
+  color: var(--p-text-color-secondary);
+  font-size: 0.8rem;
+}
+
+.app-desc {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--p-text-color-secondary);
+}
+
+.offline-badge {
+  margin: 0.25rem 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: #059669;
+  font-weight: 500;
+}
+
+.offline-badge i {
+  font-size: 0.7rem;
 }
 </style>
