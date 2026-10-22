@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../../../components/ui/PageHeader.vue'
 import Button from 'primevue/button'
@@ -93,11 +93,16 @@ import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import { useProjects } from '../../../composables/useProjects'
 import { useI18nStore, translations } from '../../../stores/i18n'
+import { useProjectsStore } from '../../../stores/projects'
 import { MAPS } from '../../../core/database/schemas/project.schema'
 
 const router = useRouter()
 const i18nStore = useI18nStore()
+const projectsStore = useProjectsStore()
 const { sortedProjects, isCreating, createNewProject, deleteProjectItem, getMapInfo } = useProjects()
+
+// Recarregar projetos quando houver mudanças no store
+watch(() => projectsStore.projects, () => {}, { deep: true })
 
 const showCreateDialog = ref(false)
 const newProjectName = ref('')
@@ -154,12 +159,14 @@ const formatDate = (dateString: string) => {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  background: var(--p-surface-0);
 }
 
 .content {
   flex: 1;
   padding: 1rem;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .empty-state {
@@ -169,72 +176,115 @@ const formatDate = (dateString: string) => {
   justify-content: center;
   height: 100%;
   color: var(--p-text-color);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .empty-state i {
-  font-size: 4rem;
+  font-size: 3.5rem;
   color: var(--p-primary-color);
   margin-bottom: 1rem;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 .empty-state h2 {
   margin: 1rem 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
 }
 
 .empty-state p {
   margin-bottom: 2rem;
   color: var(--p-text-color-secondary);
   text-align: center;
-  max-width: 300px;
+  max-width: 280px;
+  font-size: 0.9rem;
 }
 
 .projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1rem;
-  padding-bottom: 2rem;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem;
+  padding-bottom: 1rem;
 }
 
 .project-card,
 .add-project-card {
   background: var(--p-surface-50);
   border: 1px solid var(--p-surface-200);
-  border-radius: var(--p-border-radius);
-  padding: 1.5rem;
+  border-radius: 8px;
+  padding: 1rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .project-card:hover,
 .add-project-card:hover {
   border-color: var(--p-primary-color);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: start;
+  align-items: flex-start;
   margin-bottom: 0.5rem;
+  gap: 0.5rem;
 }
 
 .card-header h3 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   color: var(--p-text-color);
+  word-break: break-word;
+  font-weight: 600;
+}
+
+.card-header button {
+  flex-shrink: 0;
 }
 
 .map-name {
   margin: 0.5rem 0 0;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: var(--p-primary-color);
   font-weight: 500;
 }
 
 .date {
   margin: 0.25rem 0 0;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--p-text-color-secondary);
 }
 
@@ -244,26 +294,33 @@ const formatDate = (dateString: string) => {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 150px;
+  min-height: 120px;
   border-style: dashed;
   background: var(--p-surface-0);
 }
 
 .add-project-card i {
-  font-size: 2rem;
+  font-size: 1.75rem;
   color: var(--p-primary-color);
+  transition: transform 0.3s ease;
+}
+
+.add-project-card:hover i {
+  transform: scale(1.1) rotate(90deg);
 }
 
 .add-project-card p {
   margin: 0;
   color: var(--p-primary-color);
   font-weight: 500;
+  font-size: 0.85rem;
 }
 
 .create-form {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  max-width: 100%;
 }
 
 .form-group {
@@ -276,5 +333,42 @@ const formatDate = (dateString: string) => {
   font-weight: 500;
   color: var(--p-text-color);
   font-size: 0.9rem;
+}
+
+:deep(.p-dialog) {
+  width: 90vw !important;
+  max-width: 500px !important;
+}
+
+:deep(.p-dialog-content) {
+  padding: 1.5rem !important;
+}
+
+:deep(.p-inputtext) {
+  width: 100% !important;
+  font-size: 16px !important;
+}
+
+:deep(.p-dropdown) {
+  width: 100% !important;
+}
+
+@media (max-width: 600px) {
+  .content {
+    padding: 0.75rem;
+  }
+
+  .projects-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .empty-state i {
+    font-size: 3rem;
+  }
+
+  .empty-state h2 {
+    font-size: 1.1rem;
+  }
 }
 </style>
