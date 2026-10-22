@@ -17,6 +17,31 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../../features/projects/pages/HomePage.vue'),
       },
       {
+        path: 'project/:projectId',
+        name: 'project',
+        component: () => import('../../features/projects/pages/ProjectPage.vue'),
+      },
+      {
+        path: 'project/:projectId/triage',
+        name: 'triage',
+        component: () => import('../../features/photos/pages/TriagePage.vue'),
+      },
+      {
+        path: 'project/:projectId/review',
+        name: 'review',
+        component: () => import('../../features/photos/pages/ReviewPage.vue'),
+      },
+      {
+        path: 'project/:projectId/viewer/:photoId',
+        name: 'viewer',
+        component: () => import('../../features/photos/pages/ViewerPage.vue'),
+      },
+      {
+        path: 'project/:projectId/export',
+        name: 'export',
+        component: () => import('../../features/reports/pages/ExportPage.vue'),
+      },
+      {
         path: 'settings',
         name: 'settings',
         component: () => import('../../features/settings/pages/SettingsPage.vue'),
