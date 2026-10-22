@@ -174,7 +174,6 @@ const inboxPreviewCount = ref(0) // Calculado com base na largura da tela
 const dragPhotoId = ref<string | null>(null)
 const dragOverPhotoId = ref<string | null>(null)
 const reorderTouchPhoto = ref<Photo | null>(null)
-const reorderTouchStartTime = ref(0)
 const reorderTouchActive = ref(false)
 
 // Animação ao categorizar
